@@ -101,7 +101,7 @@ HTML/Markdown pakai Dokka kalau suatu saat dibutuhkan.
 | Autentikasi (login/register) | [features/autentikasi.md](features/autentikasi.md) | Terdokumentasi |
 | Konfigurasi (Lokasi, Sumber Kiblat, Metode Sholat) | [features/konfigurasi.md](features/konfigurasi.md) | Terdokumentasi |
 | Profil (akun, bantuan, keamanan) | [features/profil.md](features/profil.md) | Terdokumentasi |
-| Notifikasi Adzan + Personalisasi Suara + Pengingat Pra-Adzan | [features/notifikasi-adzan.md](features/notifikasi-adzan.md) | Terdokumentasi (implementasi belum di-commit) |
+| Notifikasi Adzan + Personalisasi Suara + Pengingat Pra-Adzan | [features/notifikasi-adzan.md](features/notifikasi-adzan.md) | **Dihapus dari kode 2026-09-26** (backlog; dokumen dipertahankan sebagai spesifikasi, kode terakhir ada di commit `b609ae0`) |
 | Al-Qur'an Digital & Audio | [features/al-quran.md](features/al-quran.md) | Terdokumentasi |
 | Kumpulan Doa & Dzikir (Al-Mathurat/Hisnul Muslim) | [features/doa-dzikir.md](features/doa-dzikir.md) | Terdokumentasi (backend belum di-deploy produksi) |
 | Kalkulator Scientific | [features/kalkulator-scientific.md](features/kalkulator-scientific.md) | Terdokumentasi |

@@ -24,20 +24,11 @@ class SessionManager(context: Context) {
         const val QIBLA_SOURCE_ALADHAN = "ALADHAN"
         const val QIBLA_SOURCE_MANUAL = "MANUAL_FORMULA"
 
-        private const val KEY_ADZAN_SOUND_MODE = "ADZAN_SOUND_MODE"
-        const val ADZAN_SOUND_MODE_ADZAN = "ADZAN"
-        const val ADZAN_SOUND_MODE_BEEP = "BEEP"
-        const val ADZAN_SOUND_MODE_SILENT = "SILENT"
-
         private const val KEY_HISAB_AWAL_BULAN_METHOD = "HISAB_AWAL_BULAN_METHOD"
         const val HISAB_AWAL_BULAN_ASTRONOMY_ENGINE = "ASTRONOMY_ENGINE"
         const val HISAB_AWAL_BULAN_DURRUL_ANIQ = "DURRUL_ANIQ"
 
         private const val KEY_HISAB_NASIONAL_MARKAZ_IDS = "HISAB_NASIONAL_MARKAZ_IDS"
-
-        private const val KEY_PRE_ADZAN_REMINDER_ENABLED = "PRE_ADZAN_REMINDER_ENABLED"
-        private const val KEY_PRE_ADZAN_REMINDER_MINUTES = "PRE_ADZAN_REMINDER_MINUTES"
-        const val DEFAULT_PRE_ADZAN_REMINDER_MINUTES = 10
     }
 
     /**
@@ -95,13 +86,6 @@ class SessionManager(context: Context) {
         return "${getCustomFajrAngle()},0,${getCustomIshaAngle()}"
     }
 
-    fun setAdzanSoundMode(mode: String) {
-        prefs.edit().putString(KEY_ADZAN_SOUND_MODE, mode).apply()
-    }
-
-    fun getAdzanSoundMode(): String =
-        prefs.getString(KEY_ADZAN_SOUND_MODE, ADZAN_SOUND_MODE_ADZAN) ?: ADZAN_SOUND_MODE_ADZAN
-
     /** Metode hisab awal bulan Hijriyah (fitur "Bulan Hijriyah") — Astronomy Engine (default) atau Ad-Durrul Aniq. */
     fun setHisabAwalBulanMethod(method: String) {
         prefs.edit().putString(KEY_HISAB_AWAL_BULAN_METHOD, method).apply()
@@ -117,21 +101,6 @@ class SessionManager(context: Context) {
     }
 
     fun getSelectedMarkazNasionalIds(): Set<String>? = prefs.getStringSet(KEY_HISAB_NASIONAL_MARKAZ_IDS, null)
-
-    /** Pengingat pra-adzan (mis. "10 menit lagi Dzuhur") — nonaktif by default (opt-in),
-     *  berlaku untuk semua 5 waktu sholat wajib sekaligus (bukan per-waktu). */
-    fun setPreAdzanReminderEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_PRE_ADZAN_REMINDER_ENABLED, enabled).apply()
-    }
-
-    fun isPreAdzanReminderEnabled(): Boolean = prefs.getBoolean(KEY_PRE_ADZAN_REMINDER_ENABLED, false)
-
-    fun setPreAdzanReminderMinutes(minutes: Int) {
-        prefs.edit().putInt(KEY_PRE_ADZAN_REMINDER_MINUTES, minutes).apply()
-    }
-
-    fun getPreAdzanReminderMinutes(): Int =
-        prefs.getInt(KEY_PRE_ADZAN_REMINDER_MINUTES, DEFAULT_PRE_ADZAN_REMINDER_MINUTES)
 
     fun setLogin(isLoggedIn: Boolean) {
         val editor = prefs.edit()

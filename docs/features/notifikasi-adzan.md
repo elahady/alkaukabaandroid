@@ -1,5 +1,47 @@
 # Notifikasi Adzan
 
+> **STATUS: DIHAPUS dari kode pada 2026-09-26 — masuk backlog, akan dilanjutkan
+> nanti.** Keputusan pemilik project: seluruh fitur adzan (notifikasi + suara,
+> pengingat pra-adzan, dan menu "Putar Suara Adzan") dilepas dulu dari app.
+> Dokumen ini **dipertahankan sebagai spesifikasi terakhir sebelum dihapus** —
+> semua path/kelas yang disebut di bawah **sudah tidak ada** di working tree,
+> tapi utuh di history git sampai commit `b609ae0`.
+>
+> **Yang ikut dihapus**: package `notifikasi/` (8 file: `AdzanScheduler`,
+> `AdzanAlarmReceiver`, `AdzanPlaybackService`, `AdzanRefreshWorker`,
+> `AdzanSound`, `NotificationHelper`, `PreAdzanReminderReceiver`,
+> `BootReceiver`); 3 file audio `res/raw` (`adzan_mekkah.mp3`,
+> `adzan_mekkah_subuh.mp3` = rekaman pribadi pemilik project di Masjidil Haram,
+> `adzan_marrakesh.mp3` = sudah tidak terpakai); 3 layout dialog
+> (`dialog_notifikasi_adzan`, `dialog_pengingat_pra_adzan`,
+> `dialog_putar_adzan`); 3 row + 1 launcher izin + logika pratinjau di
+> `KonfigurasiActivity`; getter/setter adzan & pra-adzan di `SessionManager`;
+> WorkManager di `AlKaukabaApplication`; dependency
+> `androidx.work:work-runtime-ktx:2.8.1`; 2 receiver + 1 service + 6 izin
+> (`POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `WAKE_LOCK`,
+> `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`,
+> `RECEIVE_BOOT_COMPLETED`) di `AndroidManifest.xml`. `VIBRATE` **tetap ada**
+> karena dipakai Tasbih Digital.
+>
+> **Yang sengaja tidak disentuh**: fitur Waktu Sholat (jadwal tampil, Aladhan
+> API, `PrayerRepository`) — itu sumber data yang nanti dipakai lagi kalau
+> adzan dihidupkan kembali.
+>
+> **Cara memulihkan**: `git checkout b609ae0 -- app/src/main/java/Site/elahady/alkaukaba/notifikasi app/src/main/res/raw app/src/main/res/layout/dialog_notifikasi_adzan.xml app/src/main/res/layout/dialog_pengingat_pra_adzan.xml app/src/main/res/layout/dialog_putar_adzan.xml`,
+> lalu kembalikan sisa perubahan di `KonfigurasiActivity`,
+> `activity_konfigurasi.xml`, `SessionManager`, `AlKaukabaApplication`,
+> `AndroidManifest.xml`, dan `app/build.gradle` dari diff commit penghapusan
+> (`git log --oneline -- docs/features/notifikasi-adzan.md`). Sebelum
+> menghidupkan lagi, baca section 7 (Known issues) — terutama fallback jadwal
+> offline dan battery optimization OEM, karena itu titik lemah desain lama.
+>
+> **Sisa yang tidak bisa dibersihkan dari sisi kode**: `SharedPreferences
+> "AppSession"` di device yang pernah memakai fitur ini masih menyimpan key
+> `ADZAN_SOUND_MODE`, `PRE_ADZAN_REMINDER_ENABLED`, `PRE_ADZAN_REMINDER_MINUTES`
+> (yatim, tidak terbaca siapa pun, tidak berbahaya). Alarm yang sudah terjadwal
+> di `AlarmManager` sebelum update juga bisa tetap ada sampai waktunya tiba,
+> tapi komponen penerimanya sudah tidak ada sehingga broadcast-nya diabaikan.
+
 ### 1. Ringkasan (Overview)
 - **Nama fitur**: Notifikasi Adzan + Personalisasi Suara + Pengingat Pra-Adzan
 - **Deskripsi singkat**: Mengirim notifikasi otomatis (dengan opsi suara) tepat

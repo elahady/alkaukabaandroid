@@ -3,15 +3,13 @@
 ## 1. Ringkasan
 
 **Fitur**: Konfigurasi — layar setting terpusat berisi Lokasi, Metode Hisab
-Awal Bulan, Sumber Perhitungan Arah Kiblat, Metode Perhitungan Waktu Sholat,
-Suara Notifikasi Adzan, dan Pengingat Pra-Adzan (2026-09-15).
+Awal Bulan, Sumber Perhitungan Arah Kiblat, dan Metode Perhitungan Waktu Sholat.
 
-Section **Pengingat Pra-Adzan** menyelesaikan kebutuhan berbeda dari
-"Suara Notifikasi Adzan" (lihat
-[notifikasi-adzan.md](notifikasi-adzan.md) untuk detail lengkap): bukan soal
-suara notifikasi *saat* waktu sholat tiba, tapi opsi (opt-in, nonaktif by
-default) untuk diingatkan beberapa menit *sebelum* waktu sholat tiba, supaya
-user bisa bersiap-siap (wudhu, dsb).
+> **Per 2026-09-26**: section **Notifikasi Adzan** (Suara Notifikasi Adzan,
+> Putar Suara Adzan) dan **Pengingat Pra-Adzan** dihapus dari layar ini bersama
+> seluruh fitur adzan (masuk backlog) — lihat
+> [notifikasi-adzan.md](notifikasi-adzan.md) untuk spesifikasi terakhir dan cara
+> memulihkan. Layar Konfigurasi sekarang hanya 4 section di atas.
 
 Sebelumnya tiap fitur (Waktu Sholat, Arah Kiblat, Kalender) selalu mengambil
 lokasi live dari GPS sendiri-sendiri, tanpa cara untuk memakai koordinat tetap
@@ -52,13 +50,9 @@ internet).
     section 5a untuk detail metode Ad-Durrul Aniq).
   - `getPrayerMethodId()` dkk — sudah ada sebelumnya, tidak berubah (lihat
     `docs/features/waktu-sholat.md`).
-  - `getAdzanSoundMode()`/`setAdzanSoundMode()` — sudah ada sebelumnya, lihat
-    `docs/features/notifikasi-adzan.md`.
-  - `isPreAdzanReminderEnabled()`/`setPreAdzanReminderEnabled()` dan
-    `getPreAdzanReminderMinutes()`/`setPreAdzanReminderMinutes()` (2026-09-15)
-    — detail lengkap alur alarm-nya ada di
-    `docs/features/notifikasi-adzan.md` section 4, bukan di sini (section ini
-    fokus ke UI settingnya saja).
+  - (Dihapus 2026-09-26) setting adzan & pengingat pra-adzan
+    (`get/setAdzanSoundMode`, `is/setPreAdzanReminderEnabled`,
+    `get/setPreAdzanReminderMinutes`) — lihat `docs/features/notifikasi-adzan.md`.
 - `KonfigurasiActivity.showLocationSheet()` — inflate `dialog_lokasi.xml`,
   radio Otomatis/Manual, dua `EditText` lat/lon yang muncul kalau Manual
   dipilih, tombol "Pakai lokasi GPS saat ini" (isi field dari
@@ -90,13 +84,6 @@ internet).
 - `KonfigurasiActivity.showHisabMethodSheet()` — inflate
   `dialog_hisab_method.xml`, radio Astronomy Engine/Ad-Durrul Aniq, simpan
   langsung (pola identik dgn `showQiblaSourceSheet()`).
-- `KonfigurasiActivity.showPreAdzanReminderSheet()` (2026-09-15) — inflate
-  `dialog_pengingat_pra_adzan.xml`: satu `SwitchCompat` on/off yang
-  menampilkan/menyembunyikan `RadioGroup` durasi (5/10/15/30 menit, default
-  10) saat disimpan. Setelah simpan, langsung panggil
-  `rescheduleAdzanAlarms()` (enqueue `AdzanRefreshWorker` immediate) supaya
-  perubahan tidak menunggu app dibuka ulang atau job harian jam 00:05 — lihat
-  `docs/features/notifikasi-adzan.md` section 3 & 4.
 - Ini **bukan** setting yang otomatis "aktif" begitu disimpan di sini — tiap
   fitur pemakai (lihat daftar di bawah) yang bertanggung jawab membaca
   `SessionManager` di titik masuk lokasinya sendiri (`checkLocationPermission()`
@@ -137,8 +124,6 @@ File yang terlibat:
 | `res/layout/dialog_hisab_method.xml` | Bottom sheet Metode Hisab: radio Astronomy Engine/Ad-Durrul Aniq, tombol Simpan |
 | `res/layout/dialog_qibla_source.xml` | Bottom sheet Arah Kiblat: radio Aladhan/Rumus Manual, tombol Simpan |
 | `res/layout/dialog_prayer_method.xml` | Bottom sheet Waktu Sholat — sudah ada sebelumnya, tidak berubah |
-| `res/layout/dialog_notifikasi_adzan.xml` | Bottom sheet Suara Notifikasi Adzan — sudah ada sebelumnya, tidak berubah |
-| `res/layout/dialog_pengingat_pra_adzan.xml` | Bottom sheet Pengingat Pra-Adzan (baru, 2026-09-15): switch on/off + radio durasi |
 
 Per 2026-08-30: `activity_konfigurasi.xml` di-polish murni visual (tidak ada
 perubahan logika) — tiap row menu (Lokasi/Kiblat/Waktu Sholat) dapat ikon
@@ -235,12 +220,8 @@ manual:
    memakai koordinat manual (bukan minta permission GPS) — lihat langkah
    detail & hasil di `docs/features/waktu-sholat.md` dan
    `docs/features/arah-kiblat.md` section Testing.
-7. Tap row "Pengingat Sebelum Waktu Sholat" → nyalakan switch → pastikan
-   pilihan durasi (5/10/15/30 menit) muncul → pilih salah satu → Simpan →
-   subtitle row berubah jadi "Aktif, N menit sebelum waktu sholat". Matikan
-   lagi switch → Simpan → subtitle kembali ke "Nonaktif". Lihat
-   `docs/features/notifikasi-adzan.md` section 6 untuk verifikasi alarm-nya
-   (di luar cakupan layar Konfigurasi ini).
+7. (Dihapus 2026-09-26) Langkah uji row "Pengingat Sebelum Waktu Sholat" ikut
+   dihapus bersama fitur adzan — lihat `docs/features/notifikasi-adzan.md`.
 
 **Catatan verifikasi sesi 2026-08-30**: langkah 4-6 sudah dicek berhasil di
 emulator. Verifikasi interaktif langkah 3-5 (tap radio di dalam
