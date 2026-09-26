@@ -431,16 +431,28 @@ ada lagi di manifest — pengguna lama tidak diminta izin baru, malah berkurang.
 - Keystore upload: `G:\My Drive\05-Archive\PERS - KEY\keystore-upload-2026.jks`
   (alias `upload`, SHA1 sertifikat `66:E9:E6:BA:...:CD:1B` cocok dengan
   `upload_certificate.pem`). `keystore.properties` di root repo (gitignored)
-  sudah dibuat dengan `storeFile` + `keyAlias` terisi; **dua password
-  (`storePassword`, `keyPassword`) masih placeholder** dan harus diisi dari
-  password manager sebelum `bundleRelease` bisa menghasilkan AAB bertanda tangan.
+  sudah diisi lengkap oleh pemilik project (password dari password manager).
 - Build final: `./gradlew.bat bundleRelease --console=plain` →
   `app/build/outputs/bundle/release/app-release.aab`. Sesudah build, cek
   sertifikatnya sebelum upload:
   `keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab`
   → SHA1 harus `66:E9:E6:BA:B6:7D:1D:99:EA:A9:CF:14:CF:53:4B:48:8C:73:CD:1B`.
-- Upload `app/build/outputs/mapping/release/mapping.txt` bersama AAB
-  (App bundle explorer → Upload deobfuscation file), lihat §8.
+- **Sudah dibuild dan diverifikasi 2026-09-26**: AAB bertanda tangan
+  (3,9 MB), SHA1 dan SHA256 penanda tangan cocok persis dengan
+  `upload_certificate.pem`, `jarsigner -verify` = "jar verified", manifest di
+  dalamnya `versionName` 1.8 dan tidak memuat izin/komponen adzan.
+- Peta deobfuscation R8 sudah **tertanam di AAB**
+  (`BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map`), jadi
+  Play Console memakainya otomatis. Kalau setelah upload masih muncul
+  peringatan "tidak ada file deobfuscation", baru upload manual
+  `app/build/outputs/mapping/release/mapping.txt` (App bundle explorer →
+  Upload deobfuscation file), lihat §8.
+- Pesan `string too large to encode using UTF-8 ... 'STRING_TOO_LARGE'` di
+  log build berasal dari `res/drawable/alkaukaba_logo.xml` (satu `pathData`
+  106 ribu karakter). Drawable itu tidak dipakai di mana pun (ada sejak
+  2026-01-17) dan di build rilis diganti stub oleh resource shrinker, jadi
+  tidak berefek ke pengguna. Aman dihapus kapan saja kalau mau log build
+  bersih.
 - Data Safety: tidak diaudit ulang untuk fitur baru. Masjid Terdekat
   (Overpass) dan pemilih lokasi via peta (tile OpenStreetMap) mengirim
   koordinat/viewport ke pihak ketiga tambahan; kategori Location sudah
