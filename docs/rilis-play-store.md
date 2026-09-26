@@ -471,3 +471,21 @@ Update besar v1.8:
 • Event Besar kini mencakup fenomena astronomi
 • Perbaikan performa & tampilan
 ```
+
+### Aset store listing 1.8 (dibuat 2026-09-26)
+
+- Lokasi: `docs/play-store/`. `feature-graphic_id.jpg` dan `feature-graphic_en.jpg`
+  (1024×500), serta `screenshots_id/` dan `screenshots_en/` (masing-masing 6
+  flyer 1080×1920: Beranda, Arah Kiblat, Waktu Sholat, Awal Bulan, Peta
+  Visibilitas Hilal, Gerhana). Dua varian bahasa karena listing default en-US
+  tapi UI app berbahasa Indonesia; pakai satu set saja.
+- Persyaratan yang tertulis di Console: screenshot ponsel 2-8 gambar, PNG/JPEG
+  maks 8 MB, rasio **tepat 16:9 atau 9:16**, tiap sisi 320-3.840 px. Tangkapan
+  emulator mentah (1080×2400) **tidak lolos**, makanya flyer disusun di kanvas
+  1080×1920. Feature graphic: PNG/JPEG maks 15 MB, tepat 1024×500.
+- Dibuat dari tangkapan asli emulator Pixel6_API34 (status bar mode demo) dan
+  logo app, dirender lewat Chrome headless. Generatornya tidak disimpan di
+  repo; kalau UI berubah, ambil tangkapan baru dan buat ulang.
+- Saran short description (batas 80 karakter, 72 terpakai): `Falak app: Qibla,
+  prayer times, Hijri month, eclipses, Al-Qur'an & zakat`. Belum diterapkan di
+  Console.
