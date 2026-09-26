@@ -405,3 +405,57 @@ Catatan lain dari sesi run-di-emulator ini:
   Login padahal sebelumnya langsung ke Home). Kalau perlu set lokasi
   manual buat testing, pakai jalur resmi di app: Konfigurasi (ikon
   gear) → Lokasi → Manual.
+
+## 9. Persiapan rilis versionCode 9 / "1.8" (2026-09-26)
+
+Rilis pembaruan pertama setelah 1.7 (versionCode 8, live 100% sejak
+2026-09-13). Isinya 90 commit sejak 1.7 dan **fitur adzan dihapus total**
+(lihat `docs/features/notifikasi-adzan.md`), jadi izin
+`POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `WAKE_LOCK`,
+`FOREGROUND_SERVICE(_MEDIA_PLAYBACK)`, dan `RECEIVE_BOOT_COMPLETED` tidak
+ada lagi di manifest — pengguna lama tidak diminta izin baru, malah berkurang.
+
+- `app/build.gradle`: `versionCode` 8 → **9**, `versionName` "1.7" → **"1.8"**
+  (commit `989d27d`). versionName dinaikkan karena 90 commit fitur baru;
+  kalau mau label lain, ubah sebelum build final (versionCode tidak boleh
+  dipakai ulang begitu terupload).
+- `minifyEnabled true` + `shrinkResources true` (§8) **pertama kali ikut
+  rilis di versi ini**. `bundleRelease` dan `assembleRelease` sukses;
+  APK release (ditandatangani debug key, hanya uji lokal) diuji di emulator
+  Pixel6_API34: masuk Beranda tanpa crash, jadwal sholat dari Aladhan terisi,
+  widget Kalender terisi. Cek statis: semua interface Retrofit ada di `api/`
+  dan semua model respons di `model/` (keduanya di-keep), satu-satunya
+  `Gson().fromJson` di luar itu (`ProfileActivity`) memakai `ApiResponse`
+  dari `model/`, jadi tidak ada celah keep-rule. **Belum diuji di build
+  release**: login/register/Google Sign-In, dan layar fitur baru satu per satu.
+- Keystore upload: `G:\My Drive\05-Archive\PERS - KEY\keystore-upload-2026.jks`
+  (alias `upload`, SHA1 sertifikat `66:E9:E6:BA:...:CD:1B` cocok dengan
+  `upload_certificate.pem`). `keystore.properties` di root repo (gitignored)
+  sudah dibuat dengan `storeFile` + `keyAlias` terisi; **dua password
+  (`storePassword`, `keyPassword`) masih placeholder** dan harus diisi dari
+  password manager sebelum `bundleRelease` bisa menghasilkan AAB bertanda tangan.
+- Build final: `./gradlew.bat bundleRelease --console=plain` →
+  `app/build/outputs/bundle/release/app-release.aab`. Sesudah build, cek
+  sertifikatnya sebelum upload:
+  `keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab`
+  → SHA1 harus `66:E9:E6:BA:B6:7D:1D:99:EA:A9:CF:14:CF:53:4B:48:8C:73:CD:1B`.
+- Upload `app/build/outputs/mapping/release/mapping.txt` bersama AAB
+  (App bundle explorer → Upload deobfuscation file), lihat §8.
+- Data Safety: tidak diaudit ulang untuk fitur baru. Masjid Terdekat
+  (Overpass) dan pemilih lokasi via peta (tile OpenStreetMap) mengirim
+  koordinat/viewport ke pihak ketiga tambahan; kategori Location sudah
+  dideklarasikan "shared: Yes" (§7), jadi kemungkinan tidak perlu diubah,
+  tapi cek ulang di Play Console sebelum submit.
+
+### Draft "What's new" v1.8 (Bahasa Indonesia, ≤500 karakter)
+
+```
+Update besar v1.8:
+• Tema Gelap (Terang / Gelap / Ikuti Sistem)
+• Baru: Masjid Terdekat, Tasbih Digital, Kalkulator Zakat & Scientific, Ayat/Hadits harian
+• Baru: Jadwal Imsakiyah, Hisab Awal Bulan Nasional, Peta Visibilitas Hilal, Konversi Hijriyah-Masehi, Peringatan Hari Wafat
+• Al-Qur'an: putar audio per surat & per Juz, atur ukuran huruf Mushaf
+• Pilih lokasi lewat peta
+• Event Besar kini mencakup fenomena astronomi
+• Perbaikan performa & tampilan
+```
