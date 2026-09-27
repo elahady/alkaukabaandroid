@@ -29,6 +29,9 @@ class SessionManager(context: Context) {
         const val HISAB_AWAL_BULAN_DURRUL_ANIQ = "DURRUL_ANIQ"
 
         private const val KEY_HISAB_NASIONAL_MARKAZ_IDS = "HISAB_NASIONAL_MARKAZ_IDS"
+
+        private const val KEY_SELECTED_MARKAZ_IMSAKIYAH = "SELECTED_MARKAZ_IMSAKIYAH"
+        private const val KEY_SELECTED_MARKAZ_WAKTU_SHOLAT = "SELECTED_MARKAZ_WAKTU_SHOLAT"
     }
 
     /**
@@ -101,6 +104,26 @@ class SessionManager(context: Context) {
     }
 
     fun getSelectedMarkazNasionalIds(): Set<String>? = prefs.getStringSet(KEY_HISAB_NASIONAL_MARKAZ_IDS, null)
+
+    /**
+     * Kota (markaz) yang dipilih user untuk fitur "Jadwal Imsakiyah" (menu ⚙️ di toolbar,
+     * lihat `PilihKotaActivity`). `null` = belum pernah diatur / user pilih "Gunakan GPS
+     * Otomatis" -> jatuh ke alur lokasi lama (GPS -> lokasi manual global -> fallback Jakarta).
+     * Sengaja terpisah dari [KEY_SELECTED_MARKAZ_WAKTU_SHOLAT] - tiap fitur punya pilihan
+     * kotanya sendiri, tidak dibagi.
+     */
+    fun setSelectedMarkazImsakiyahId(id: String?) {
+        prefs.edit().putString(KEY_SELECTED_MARKAZ_IMSAKIYAH, id).apply()
+    }
+
+    fun getSelectedMarkazImsakiyahId(): String? = prefs.getString(KEY_SELECTED_MARKAZ_IMSAKIYAH, null)
+
+    /** Sama seperti [setSelectedMarkazImsakiyahId]/[getSelectedMarkazImsakiyahId], untuk fitur "Waktu Sholat". */
+    fun setSelectedMarkazWaktuSholatId(id: String?) {
+        prefs.edit().putString(KEY_SELECTED_MARKAZ_WAKTU_SHOLAT, id).apply()
+    }
+
+    fun getSelectedMarkazWaktuSholatId(): String? = prefs.getString(KEY_SELECTED_MARKAZ_WAKTU_SHOLAT, null)
 
     fun setLogin(isLoggedIn: Boolean) {
         val editor = prefs.edit()

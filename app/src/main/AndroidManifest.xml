@@ -83,6 +83,12 @@
             android:name="site.elahady.alkaukaba.ui.jadwalimsakiyah.JadwalImsakiyahActivity"
             android:exported="false" />
         <activity
+            android:name="site.elahady.alkaukaba.ui.pilihkota.PilihKotaActivity"
+            android:exported="false" />
+        <activity
+            android:name="site.elahady.alkaukaba.ui.laporanjadwal.LaporanJadwalActivity"
+            android:exported="false" />
+        <activity
             android:name="site.elahady.alkaukaba.ui.kalkulator.KalkulatorActivity"
             android:exported="false" />
         <activity

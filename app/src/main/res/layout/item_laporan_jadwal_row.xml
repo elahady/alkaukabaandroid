@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Baris tabel laporan cetak (LaporanJadwalActivity) - full-bleed weighted row (match_parent +
+     layout_weight), BEDA dari item_imsakiyah_row.xml yang wrap_content + HorizontalScrollView
+     untuk tampilan interaktif di layar. Di sini semua 9 kolom (tanggal + 8 waktu) harus muat
+     dalam 1 lebar halaman PDF supaya teks tidak mengecil drastis saat di-capture jadi bitmap. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingVertical="6dp">
+
+    <TextView
+        android:id="@+id/tvDate"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.3"
+        android:gravity="center"
+        android:textSize="9sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="1\n01/03" />
+
+    <TextView
+        android:id="@+id/tvTime0"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="03:45" />
+
+    <TextView
+        android:id="@+id/tvTime1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="04:20" />
+
+    <TextView
+        android:id="@+id/tvTime2"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="04:30" />
+
+    <TextView
+        android:id="@+id/tvTime3"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="05:50" />
+
+    <TextView
+        android:id="@+id/tvTime4"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="11:55" />
+
+    <TextView
+        android:id="@+id/tvTime5"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="15:15" />
+
+    <TextView
+        android:id="@+id/tvTime6"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="17:55" />
+
+    <TextView
+        android:id="@+id/tvTime7"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textSize="8.5sp"
+        android:textColor="@color/login_bg_deep"
+        tools:text="19:05" />
+
+</LinearLayout>

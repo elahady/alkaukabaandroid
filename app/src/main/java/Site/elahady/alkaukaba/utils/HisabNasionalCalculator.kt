@@ -57,6 +57,11 @@ object HisabNasionalCalculator {
         "aceh", "sumbar", "dki", "diy", "jatim", "ntb", "sulsel", "sulut", "maluku", "pabar", "papua"
     )
 
+    /** Cari [MarkazNasional] dari id tersimpan (mis. hasil `PilihKotaActivity`/SessionManager).
+     *  `null` id atau id yang tidak ditemukan (mis. daftar markaz berubah) -> null, caller jatuh
+     *  ke alur lokasi GPS/manual lama. */
+    fun resolveMarkaz(id: String?): MarkazNasional? = id?.let { mid -> allMarkaz.find { it.id == mid } }
+
     // heightMeters disamakan 0.0 (markaz permukaan laut) untuk semua titik — penyederhanaan
     // yang sama dipakai fitur Okultasi utk lokasi default.
     fun calculate(monthOffset: Int = 0, selectedIds: Set<String> = defaultMarkazIds): List<MarkazHisabResult> {
