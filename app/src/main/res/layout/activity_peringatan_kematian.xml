@@ -27,7 +27,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Hitung tanggal peringatan 7, 40, 100, dan 1.000 hari wafatnya seseorang. Pilih tanggal wafat, hasilnya langsung muncul beserta hari dan pasarannya."
+                android:text="Hitung tanggal peringatan 7, 40, 100, dan 1.000 hari wafatnya seseorang, beserta haul tahunannya. Pilih tanggal wafat, hasilnya langsung muncul beserta hari dan pasarannya."
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
                 android:layout_marginBottom="20dp" />
@@ -100,6 +100,58 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardHaul"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Haul (Peringatan Tahunan)"
+                        android:textColor="@color/text_label_gold"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.06" />
+
+                    <TextView
+                        android:id="@+id/tvHaulInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        tools:text="Haul jatuh tiap 6 Rabiul Akhir menurut kalender Hijriyah. Lima haul berikutnya:" />
+
+                    <LinearLayout
+                        android:id="@+id/containerHaul"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Tanggal Hijriyah dihitung dengan kalender tabular, bisa berbeda 1-2 hari dari penetapan resmi. Cocokkan dengan kalender di beranda sebelum menetapkan hari acara."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

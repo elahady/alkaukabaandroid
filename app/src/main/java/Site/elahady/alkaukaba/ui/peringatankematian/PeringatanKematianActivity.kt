@@ -10,6 +10,7 @@ import androidx.core.view.WindowCompat
 import site.elahady.alkaukaba.R
 import site.elahady.alkaukaba.databinding.ActivityPeringatanKematianBinding
 import site.elahady.alkaukaba.databinding.ItemPeringatanKematianBinding
+import site.elahady.alkaukaba.utils.HijriDateUtil
 import site.elahady.alkaukaba.utils.JavaneseCalendarUtil
 import site.elahady.alkaukaba.utils.PeringatanKematianCalculator
 import site.elahady.alkaukaba.utils.applyStatusBarIconsForTheme
@@ -86,6 +87,31 @@ class PeringatanKematianActivity : AppCompatActivity() {
             binding.containerPeringatan.addView(row.root)
         }
         binding.cardHasil.visibility = View.VISIBLE
+
+        tampilkanHaul(hariIni)
+    }
+
+    private fun tampilkanHaul(hariIni: Calendar) {
+        val daftar = PeringatanKematianCalculator.hitungHaulMendatang(tanggalWafat, hariIni)
+        val asal = HijriDateUtil.gregorianToHijri(
+            tanggalWafat.get(Calendar.YEAR),
+            tanggalWafat.get(Calendar.MONTH) + 1,
+            tanggalWafat.get(Calendar.DAY_OF_MONTH)
+        )
+        binding.tvHaulInfo.text = "Wafat ${HijriDateUtil.hijriLabel(asal)}, jadi haul jatuh tiap " +
+            "${asal.day} ${HijriDateUtil.monthNames[asal.month - 1]} menurut kalender Hijriyah. " +
+            "${daftar.size} haul berikutnya:"
+
+        binding.containerHaul.removeAllViews()
+        daftar.forEachIndexed { index, haul ->
+            val row = ItemPeringatanKematianBinding.inflate(layoutInflater, binding.containerHaul, false)
+            row.tvHariKe.text = "Haul ke-${formatRibuan.format(haul.haulKe)}"
+            row.tvTanggal.text = "${HijriDateUtil.hijriLabel(haul.tanggalHijriyah)}\n${labelTanggal(haul.tanggal)}"
+            bindStatus(row, PeringatanKematianCalculator.selisihHari(hariIni, haul.tanggal))
+            row.divider.visibility = if (index == daftar.lastIndex) View.GONE else View.VISIBLE
+            binding.containerHaul.addView(row.root)
+        }
+        binding.cardHaul.visibility = View.VISIBLE
     }
 
     private fun bindStatus(row: ItemPeringatanKematianBinding, selisihHari: Long) {

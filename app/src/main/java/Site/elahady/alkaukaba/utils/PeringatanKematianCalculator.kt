@@ -1,6 +1,7 @@
 package site.elahady.alkaukaba.utils
 
 import java.util.Calendar
+import java.util.GregorianCalendar
 import java.util.concurrent.TimeUnit
 
 /** Satu peringatan (tahlilan) orang meninggal: [hariKe] (7/40/100/1000) dan [tanggal] Masehi
@@ -10,12 +11,25 @@ data class PeringatanKematian(
     val tanggal: Calendar
 )
 
+/** Satu haul (peringatan wafat tahunan): [haulKe] (1, 2, 3, ...), [tanggalHijriyah] jatuhnya
+ * (tanggal + bulan Hijriyah wafat, tahun wafat + [haulKe]), dan padanannya [tanggal] Masehi
+ * (00:00 waktu lokal). */
+data class HaulKematian(
+    val haulKe: Int,
+    val tanggalHijriyah: HijriDateUtil.DateParts,
+    val tanggal: Calendar
+)
+
 /** Hitung tanggal peringatan 7, 40, 100, dan 1.000 hari wafatnya seseorang (tradisi tahlilan
- * di Indonesia). Murni fungsi tanggal, tidak ada dependency ke Android framework. */
+ * di Indonesia), plus haul tahunannya. Murni fungsi tanggal, tidak ada dependency ke Android
+ * framework. */
 object PeringatanKematianCalculator {
 
     /** Hari ke-N yang diperingati, urut dari yang tercepat. */
     val HARI_PERINGATAN = listOf(7, 40, 100, 1000)
+
+    /** Berapa haul mendatang yang ditampilkan secara default. */
+    const val JUMLAH_HAUL_MENDATANG = 5
 
     /**
      * Tanggal tiap peringatan untuk wafat di [tanggalWafat].
@@ -31,6 +45,38 @@ object PeringatanKematianCalculator {
             val tanggal = awalHari(tanggalWafat).apply { add(Calendar.DAY_OF_MONTH, hariKe - offset) }
             PeringatanKematian(hariKe, tanggal)
         }
+    }
+
+    /**
+     * [jumlah] haul berikutnya untuk wafat di [tanggalWafat], dihitung mulai [hariIni] (haul yang
+     * jatuh tepat hari ini ikut dihitung). Haul mengikuti tahun Hijriyah: tanggal + bulan Hijriyah
+     * wafat diulang tiap tahun Hijriyah, jadi tanggal Masehinya maju sekitar 11 hari lebih awal
+     * tiap tahun. Konversi memakai kalender tabular ([HijriDateUtil]) yang bisa meleset 1-2 hari
+     * dari penetapan resmi. Kalau tanggal 30 tidak ada di bulan tujuan (Dzulhijjah tahun tidak
+     * kabisat), dipakai hari terakhir bulan itu.
+     */
+    fun hitungHaulMendatang(
+        tanggalWafat: Calendar,
+        hariIni: Calendar,
+        jumlah: Int = JUMLAH_HAUL_MENDATANG
+    ): List<HaulKematian> {
+        val wafat = HijriDateUtil.gregorianToHijri(
+            tanggalWafat.get(Calendar.YEAR),
+            tanggalWafat.get(Calendar.MONTH) + 1,
+            tanggalWafat.get(Calendar.DAY_OF_MONTH)
+        )
+        val hasil = mutableListOf<HaulKematian>()
+        var haulKe = 1
+        while (hasil.size < jumlah) {
+            val tahun = wafat.year + haulKe
+            val hari = minOf(wafat.day, HijriDateUtil.hijriMonthLength(tahun, wafat.month))
+            val hijriyah = HijriDateUtil.DateParts(tahun, wafat.month, hari)
+            val masehi = HijriDateUtil.hijriToGregorian(tahun, wafat.month, hari)
+            val tanggal = GregorianCalendar(masehi.year, masehi.month - 1, masehi.day)
+            if (selisihHari(hariIni, tanggal) >= 0) hasil += HaulKematian(haulKe, hijriyah, tanggal)
+            haulKe++
+        }
+        return hasil
     }
 
     /** Selisih hari kalender dari [dari] ke [ke]: positif kalau [ke] di masa depan, 0 kalau
