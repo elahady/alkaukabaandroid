@@ -13,6 +13,8 @@ import site.elahady.alkaukaba.utils.prayerbreakdown.PrayerBreakdownSection
 import site.elahady.alkaukaba.utils.SessionManager
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.os.Build
@@ -22,6 +24,7 @@ import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,15 +39,32 @@ import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import site.elahady.alkaukaba.databinding.DialogPilihBulanBinding
+import site.elahady.alkaukaba.model.MarkazNasional
+import site.elahady.alkaukaba.model.PrayerScheduleReportData
+import site.elahady.alkaukaba.model.PrayerScheduleReportRow
+import site.elahady.alkaukaba.ui.laporanjadwal.LaporanJadwalActivity
+import site.elahady.alkaukaba.ui.pilihkota.PilihKotaActivity
+import site.elahady.alkaukaba.utils.HisabNasionalCalculator
+import site.elahady.alkaukaba.utils.HijriDateUtil
 import site.elahady.alkaukaba.utils.applySystemBarInsetsPadding
 import site.elahady.alkaukaba.utils.applyTopSystemBarInsetAsMargin
 import site.elahady.alkaukaba.utils.applyStatusBarIconsForTheme
+import site.elahady.alkaukaba.viewmodel.waktusholat.PrayerMonthlyScheduleViewModel
+import site.elahady.alkaukaba.viewmodel.waktusholat.PrayerMonthlyScheduleViewModelFactory
+import site.elahady.alkaukaba.viewmodel.shared.PrayerScheduleTableUiState
+import androidx.lifecycle.Observer
+import java.util.Calendar
 
 class WaktuSholatActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityWaktuSholatBinding
     private lateinit var viewModel: PrayerTimesViewModel
     private lateinit var sessionManager: SessionManager
+
+    private var lastLat: Double? = null
+    private var lastLng: Double? = null
+    private var lastLocationLabel: String = ""
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
         private val locationPermissionRequest = registerForActivityResult(
@@ -82,8 +102,14 @@ class WaktuSholatActivity : AppCompatActivity() {
         setupUI()
         setupViewModel()
         observeViewModel()
-        checkLocationPermission()
         updateDateDisplay()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-check tiap kali resume (bukan cuma onCreate) supaya balik dari PilihKotaActivity
+        // sehabis ganti kota langsung reload otomatis, sama seperti HisabNasionalActivity.
+        checkLocationPermission()
     }
 
     private fun setupViewModel() {
@@ -108,6 +134,19 @@ class WaktuSholatActivity : AppCompatActivity() {
         }
         binding.includeToolbar.tvToolbarTitle.text = "Waktu Sholat"
         binding.includeToolbar.btnBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.includeToolbar.btnToolbarAction.apply {
+            visibility = View.VISIBLE
+            setImageResource(R.drawable.ic_settings)
+            setOnClickListener {
+                startActivity(
+                    Intent(this@WaktuSholatActivity, PilihKotaActivity::class.java).apply {
+                        putExtra(PilihKotaActivity.EXTRA_TARGET, PilihKotaActivity.TARGET_WAKTU_SHOLAT)
+                        putExtra(PilihKotaActivity.EXTRA_TITLE, "Pilih Kota - Waktu Sholat")
+                    }
+                )
+            }
+        }
+        binding.btnCetakJadwalBulanan.setOnClickListener { showPilihBulanDialog() }
     }
 
     private fun updateTabState(isActual: Boolean) {
@@ -273,6 +312,12 @@ class WaktuSholatActivity : AppCompatActivity() {
     }
 
     private fun checkLocationPermission() {
+            val markaz = HisabNasionalCalculator.resolveMarkaz(sessionManager.getSelectedMarkazWaktuSholatId())
+            if (markaz != null) {
+                useMarkazLocation(markaz)
+                return
+            }
+
             if (sessionManager.isManualLocationMode()) {
                 // Setting lokasi global (lihat KonfigurasiActivity) - lewati GPS/permission sama sekali.
                 useManualLocation(sessionManager.getManualLat(), sessionManager.getManualLng())
@@ -327,10 +372,27 @@ class WaktuSholatActivity : AppCompatActivity() {
         viewModel.loadData(lat, lon)
     }
 
+    // Markaz dari daftar HisabNasionalCalculator.allMarkaz (dipilih via PilihKotaActivity) -
+    // nama kota+provinsi sudah pasti diketahui, jadi tidak perlu reverse-geocode seperti GPS.
+    @SuppressLint("SetTextI18n")
+    private fun useMarkazLocation(markaz: MarkazNasional) {
+        lastLat = markaz.latitude
+        lastLng = markaz.longitude
+        lastLocationLabel = "${markaz.nama}, ${markaz.provinsi} (Lat %.4f, Lng %.4f)".format(
+            java.util.Locale.US, markaz.latitude, markaz.longitude
+        )
+        binding.tvDetailCoordinates.text = "Koordinat: Lat ${markaz.latitude}, Long ${markaz.longitude}"
+        binding.tvLocationName.text = "${markaz.nama}, ${markaz.provinsi}"
+        viewModel.loadData(markaz.latitude, markaz.longitude)
+    }
+
     // Nama lokasi (mis. "Surabaya, Jawa Timur") ditampilkan di hero card - koordinat mentah
     // dipindah ke tab Detail Perhitungan supaya halaman utama tidak terlalu teknis.
     @SuppressLint("SetTextI18n")
     private fun updateLocationDisplay(lat: Double, lon: Double) {
+        lastLat = lat
+        lastLng = lon
+        lastLocationLabel = "Lat %.4f, Lng %.4f".format(java.util.Locale.US, lat, lon)
         binding.tvDetailCoordinates.text = "Koordinat: Lat $lat, Long $lon"
         binding.tvLocationName.text = "Mencari nama lokasi..."
 
@@ -338,6 +400,9 @@ class WaktuSholatActivity : AppCompatActivity() {
             val placeName = resolvePlaceName(lat, lon)
             withContext(Dispatchers.Main) {
                 binding.tvLocationName.text = placeName ?: "Lokasi Anda"
+                if (placeName != null) {
+                    lastLocationLabel = "$placeName (Lat %.4f, Lng %.4f)".format(java.util.Locale.US, lat, lon)
+                }
             }
         }
     }
@@ -353,5 +418,73 @@ class WaktuSholatActivity : AppCompatActivity() {
         } catch (e: Exception) {
             null
         }
+    }
+
+    // Dialog pilih bulan/tahun Masehi untuk cetak PDF jadwal sholat bulanan - bulan bebas
+    // (tidak dikunci ke Ramadhan seperti Jadwal Imsakiyah), lihat PrayerMonthlyScheduleViewModel.
+    private fun showPilihBulanDialog() {
+        val lat = lastLat
+        val lng = lastLng
+        if (lat == null || lng == null) {
+            Toast.makeText(this, "Lokasi belum siap, tunggu sebentar", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialogBinding = DialogPilihBulanBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this).setView(dialogBinding.root).create()
+
+        val monthAdapter = ArrayAdapter(this, R.layout.item_spinner_selector, HijriDateUtil.gregorianMonthNames)
+        monthAdapter.setDropDownViewResource(R.layout.item_spinner_selector_dropdown)
+        dialogBinding.spinnerBulan.adapter = monthAdapter
+
+        val nowCal = Calendar.getInstance()
+        val currentMonth = nowCal.get(Calendar.MONTH) + 1
+        val currentYear = nowCal.get(Calendar.YEAR)
+        val yearRange = (currentYear - 1)..(currentYear + 2)
+        val yearAdapter = ArrayAdapter(this, R.layout.item_spinner_selector, yearRange.map { it.toString() })
+        yearAdapter.setDropDownViewResource(R.layout.item_spinner_selector_dropdown)
+        dialogBinding.spinnerTahun.adapter = yearAdapter
+
+        dialogBinding.spinnerBulan.setSelection(currentMonth - 1)
+        dialogBinding.spinnerTahun.setSelection(yearRange.indexOf(currentYear))
+
+        dialogBinding.btnCetakBulanan.setOnClickListener {
+            val selectedMonth = dialogBinding.spinnerBulan.selectedItemPosition + 1
+            val selectedYear = yearRange.first + dialogBinding.spinnerTahun.selectedItemPosition
+            dialog.dismiss()
+            cetakJadwalBulanan(lat, lng, selectedMonth, selectedYear)
+        }
+
+        dialog.show()
+    }
+
+    // Bikin ViewModel baru tiap panggilan (bukan reuse instance ter-scope Activity) supaya
+    // observer sekali-pakai di bawah tidak menumpuk kalau tombol cetak ditekan berkali-kali.
+    private fun cetakJadwalBulanan(lat: Double, lng: Double, month: Int, year: Int) {
+        val repository = PrayerRepository(RetrofitClient.instance, applicationContext)
+        val monthlyViewModel = PrayerMonthlyScheduleViewModelFactory(repository)
+            .create(PrayerMonthlyScheduleViewModel::class.java)
+
+        monthlyViewModel.errorMessage.observe(this) { message ->
+            if (!message.isNullOrEmpty()) Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+        lateinit var stateObserver: Observer<PrayerScheduleTableUiState>
+        stateObserver = Observer { state ->
+            monthlyViewModel.uiState.removeObserver(stateObserver)
+            val reportData = PrayerScheduleReportData(
+                reportTitle = "JADWAL WAKTU SHOLAT BULANAN",
+                monthLabel = state.monthLabel,
+                locationLabel = lastLocationLabel,
+                columnLabels = state.columnLabels,
+                rows = state.rows.map { row -> PrayerScheduleReportRow(row.gregorianLabel, row.times) },
+                fileNamePrefix = "Jadwal_Sholat_Bulanan"
+            )
+            startActivity(
+                Intent(this, LaporanJadwalActivity::class.java)
+                    .putExtra(LaporanJadwalActivity.EXTRA_REPORT, reportData)
+            )
+        }
+        monthlyViewModel.uiState.observe(this, stateObserver)
+        monthlyViewModel.loadMonth(lat, lng, month, year)
     }
 }

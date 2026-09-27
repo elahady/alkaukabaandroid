@@ -53,6 +53,20 @@
 
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/btnCetakJadwalBulanan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="?attr/selectableItemBackground"
+        android:drawablePadding="8dp"
+        android:gravity="center"
+        android:padding="10dp"
+        android:text="Cetak Jadwal Sholat Bulanan (PDF)"
+        android:textColor="@color/text_label_gold"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
     <ScrollView
         android:id="@+id/scrollContent"
         android:layout_width="match_parent"
