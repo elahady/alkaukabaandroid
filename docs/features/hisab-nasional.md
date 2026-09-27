@@ -206,7 +206,13 @@ screenshot):
       (`HisabNasionalCalculator.allMarkaz`) — kalau user mau titik yang
       berbeda/mengikuti daftar resmi Kemenag (ratusan titik per
       kabupaten/kota), tinggal ubah list ini, tidak ada dependensi lain yang
-      perlu diubah (UI checklist otomatis ikut menyesuaikan).
+      perlu diubah (UI checklist otomatis ikut menyesuaikan). Per 2026-09-28,
+      list yang sama juga direuse oleh `PilihKotaActivity` (picker kota
+      single-select untuk Jadwal Imsakiyah & Waktu Sholat, lihat
+      `docs/features/jadwal-imsakiyah.md`/`waktu-sholat.md`) lewat
+      `HisabNasionalCalculator.resolveMarkaz(id)` — perubahan pada
+      `allMarkaz` (tambah/hapus/ubah kota) otomatis ikut memengaruhi kedua
+      picker itu juga.
 - [ ] Elevasi (`heightMeters`) semua markaz disamakan `0.0` — penyederhanaan,
       belum pakai elevasi asli tiap kota.
 - [ ] `PilihMarkazActivity` belum ada search/filter — scroll manual di 38

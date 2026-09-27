@@ -4,12 +4,30 @@
 
 **Fitur**: Jadwal Imsakiyah — tabel semua waktu sholat (Sepertiga Malam
 Akhir, Imsak, Subuh, Dhuha, Dzuhur, Ashar, Maghrib, Isya) untuk 1 bulan
-Hijriyah penuh, satu baris per hari. Menjawab kebutuhan umum "jadwal
-imsakiyah Ramadhan", tapi tidak dikunci ke bulan Ramadhan saja — user bisa
-geser ke bulan Hijriyah manapun lewat navigasi ◀/▶.
+Ramadhan penuh, satu baris per hari.
 
 Kolom tanggal (kolom pertama) **freeze** — tetap diam di kiri layar saat
 kolom-kolom waktu sholat digeser horizontal (lihat section 4).
+
+**Revisi 2026-09-28** (per permintaan user, lihat section 3/4 untuk detail):
+- **Dikunci ke Ramadhan saja** — navigasi ◀/▶ bebas ke bulan Hijriyah
+  manapun (versi awal) dihapus. Layar ini sekarang selalu mencari &
+  menampilkan Ramadhan terdekat ke depan (`JadwalImsakiyahViewModel
+  .loadRamadhan()`). Kebutuhan "cek beberapa bulan Hijriyah berdekatan"
+  dianggap tidak relevan untuk fitur ini — kalau user butuh jadwal sholat
+  bulan lain (bulan Masehi bebas), itu dipindah ke fitur Waktu Sholat
+  (lihat `docs/features/waktu-sholat.md`).
+- **Koordinat/kota dasar perhitungan ditampilkan** (`tvLocationInfo`, di
+  bawah label bulan) dan **bisa dipilih dari daftar kota** — konsepnya
+  disamakan dengan Hisab Awal Bulan Nasional: daftar 38 ibu kota provinsi
+  yang sama (`HisabNasionalCalculator.allMarkaz`), dibuka lewat ikon ⚙️ di
+  toolbar (`PilihKotaActivity`, single-select, baru — beda dari
+  `PilihMarkazActivity` yang checklist multi-select untuk Hisab Nasional).
+  Pilihan kota Imsakiyah **tidak dibagi** dengan pilihan kota Waktu Sholat
+  (setting tersimpan terpisah, keputusan produk eksplisit).
+- **Cetak PDF** — tombol "CETAK PDF" baru, render laporan lewat
+  `LaporanJadwalActivity` (dipakai bareng fitur Waktu Sholat) dan unduh
+  lewat `HilalPdfService` yang sama dipakai fitur Awal Bulan Hijriyah.
 
 ## 2. Entry point & prasyarat
 
@@ -21,37 +39,50 @@ kolom-kolom waktu sholat digeser horizontal (lihat section 4).
   penuh — lihat `docs/features/hisab-nasional.md` §2/§7) untuk kasih tempat
   menu ini; "Doa & Dzikir" **masih ada** di "Semua Menu", tidak dihapus dari
   aplikasi.
-- Prasyarat: sama seperti Waktu Sholat — lokasi (GPS + permission, atau
-  lokasi manual dari Konfigurasi, fallback Jakarta) dan koneksi network
-  (data diambil dari Aladhan API).
+- Prasyarat: sama seperti Waktu Sholat — lokasi (kota pilihan tersimpan
+  lewat ⚙️, atau GPS + permission, atau lokasi manual dari Konfigurasi,
+  fallback Jakarta) dan koneksi network (data diambil dari Aladhan API).
 
 ## 3. Titik masuk logika & navigasi
 
 - `HijriCalendarEngine.monthRangeForOffset(observer, referenceDate,
-  monthOffset): HijriMonthRange` (baru, `utils/HijriCalendarEngine.kt`) —
-  titik masuk untuk "kasih tanggal 1 Masehi + jumlah hari 1 bulan Hijriyah
-  yang digeser N bulan dari bulan yang memuat `referenceDate`". Reuse mesin
+  monthOffset): HijriMonthRange` (`utils/HijriCalendarEngine.kt`) — titik
+  masuk untuk "kasih tanggal 1 Masehi + jumlah hari 1 bulan Hijriyah yang
+  digeser N bulan dari bulan yang memuat `referenceDate`". Reuse mesin
   hisab yang sama dengan kalender home/Awal Bulan (ijtima' + ghurub +
   kriteria Neo-MABIMS + istikmal), bukan `HijriDateUtil` tabular.
-- `JadwalImsakiyahViewModel.loadMonth(lat, lng, offset)` — entry point utama
-  fitur, dipanggil ulang oleh `nextMonth()`/`prevMonth()` (state
-  `monthOffset`/`lat`/`lng` disimpan di ViewModel).
+- `JadwalImsakiyahViewModel.loadRamadhan(lat, lng)` — entry point utama
+  fitur (ganti nama dari `loadMonth(lat, lng, offset)` versi lama). Loop
+  `monthRangeForOffset` dengan offset 0..12 sampai ketemu `monthName ==
+  "Ramadhan"` (batas aman 12 iterasi = 1 tahun Hijriyah), lalu load jadwal
+  1 bulan itu — **tidak ada lagi** `nextMonth()`/`prevMonth()`/`monthOffset`
+  tersimpan, fitur ini sekarang murni "tampilkan Ramadhan terdekat".
+- `HisabNasionalCalculator.resolveMarkaz(id)` — lookup `MarkazNasional` dari
+  id kota tersimpan (`SessionManager.getSelectedMarkazImsakiyahId()`). Kalau
+  ada, `JadwalImsakiyahActivity.checkLocationPermission()` pakai koordinat
+  markaz itu langsung, melewati cabang GPS/manual/fallback yang sudah ada.
 - Navigasi ke layar ini: `Intent(context, JadwalImsakiyahActivity::class.java)`
-  dari `MainActivity`/`SemuaMenuActivity`. Tidak ada navigasi keluar dari
-  layar ini selain tombol back toolbar.
+  dari `MainActivity`/`SemuaMenuActivity`. Dari dalam layar ini, ikon ⚙️ →
+  `PilihKotaActivity` (ganti kota), tombol "CETAK PDF" →
+  `LaporanJadwalActivity` (lihat `docs/features/waktu-sholat.md` untuk
+  detail activity yang dipakai bareng ini). Tombol back toolbar → keluar.
 
 ## 4. Struktur & alur data
 
 | File | Peran |
 |---|---|
-| `ui/jadwalimsakiyah/JadwalImsakiyahActivity.kt` + `activity_jadwal_imsakiyah.xml` | UI: toolbar, baris navigasi bulan (◀ label ▶), tabel (di-build programatic ke `layoutImsakiyahTable`). Resolusi lokasi (GPS/manual/fallback) dicopy dari `WaktuSholatActivity`. |
-| `viewmodel/jadwalimsakiyah/JadwalImsakiyahViewModel.kt` + `JadwalImsakiyahViewModelFactory.kt` | `LiveData<ImsakiyahUiState>` (monthLabel, columnLabels, rows), `isLoading`, `errorMessage`. `ImsakiyahRow(hijriDay, gregorianLabel, times)`. |
+| `ui/jadwalimsakiyah/JadwalImsakiyahActivity.kt` + `activity_jadwal_imsakiyah.xml` | UI: toolbar (+ ikon ⚙️ pilih kota), label bulan + info lokasi (`tvLocationInfo`), tabel (di-build programatic ke `layoutImsakiyahTable`), tombol "CETAK PDF". Resolusi lokasi (kota tersimpan → manual global → GPS → fallback) dicopy polanya dari `WaktuSholatActivity`. |
+| `viewmodel/jadwalimsakiyah/JadwalImsakiyahViewModel.kt` + `JadwalImsakiyahViewModelFactory.kt` | `LiveData<PrayerScheduleTableUiState>` (monthLabel, columnLabels, rows), `isLoading`, `errorMessage`. Entry point `loadRamadhan(lat, lng)`. |
+| `viewmodel/shared/PrayerScheduleTableModels.kt` | `PrayerScheduleTableRow`/`PrayerScheduleTableUiState` (baru, generic — rename dari `ImsakiyahRow`/`ImsakiyahUiState` supaya bisa dipakai ulang oleh jadwal bulanan Waktu Sholat). |
+| `utils/PrayerScheduleFormatter.kt` | `COLUMN_ORDER`/`COLUMN_LABELS`/`buildTimes()` (baru, dipindah dari `JadwalImsakiyahViewModel` supaya dipakai bareng jadwal bulanan Waktu Sholat — lihat `docs/features/waktu-sholat.md`). |
+| `ui/pilihkota/PilihKotaActivity.kt` + `adapter/MarkazRadioAdapter.kt` | Picker kota single-select (baru, dipakai bareng Waktu Sholat) — daftar dari `HisabNasionalCalculator.allMarkaz`, tulis ke `SessionManager.setSelectedMarkazImsakiyahId()`/`setSelectedMarkazWaktuSholatId()` sesuai `EXTRA_TARGET`, lalu `finish()` (caller re-read di `onResume()`, pola sama `HisabNasionalActivity`). |
+| `ui/laporanjadwal/LaporanJadwalActivity.kt` + `model/PrayerScheduleReportModels.kt` | Render laporan (tabel tanggal + 8 kolom waktu) + unduh PDF lewat `HilalPdfService` (dipakai bareng jadwal bulanan Waktu Sholat) — pola sama `LaporanHisabActivity` di fitur Awal Bulan. |
 | `res/layout/item_imsakiyah_day_cell.xml` | 1 sel kolom tanggal **freeze** (`TextView` tunggal, 56dp x 52dp), diinflate berulang ke `layoutImsakiyahDayColumn` — di luar `HorizontalScrollView` supaya tidak ikut geser. |
 | `res/layout/item_imsakiyah_row.xml` | 1 baris 8 kolom waktu (tanpa kolom tanggal lagi sejak freeze-column), diinflate berulang ke `layoutImsakiyahTable` di dalam `HorizontalScrollView`, untuk header (bold + tint amber) dan tiap hari (background selang-seling). Row height di-fixed 52dp di kedua layout (`item_imsakiyah_day_cell.xml` & `item_imsakiyah_row.xml`) supaya baris tanggal & baris waktu tetap sejajar saat scroll vertikal. |
-| `utils/HijriCalendarEngine.kt` | + `HijriMonthRange` + `monthRangeForOffset()` (public, baru) + `previousSegment()` (private, baru) — logic inti tetap yang lama (`findSegmentContaining`/`nextSegment`/dst), tidak diubah. |
+| `utils/HijriCalendarEngine.kt` | `HijriMonthRange` + `monthRangeForOffset()` + `previousSegment()` — logic inti tetap yang lama (`findSegmentContaining`/`nextSegment`/dst), tidak diubah. |
 | `api/PrayersApiService.kt` | `Timings` (dipakai response `/v1/calendar`) ditambah field opsional `imsak`/`sunrise`/`lastThird` (additive, field lama tidak berubah) — sebelumnya cuma `Fajr/Dhuhr/Asr/Maghrib/Isha`. |
-| `repo/PrayerRepository.kt` | Tidak berubah — reuse `getIslamicHolidays(lat, lng, month, year)` yang sudah ada (dipanggil 1-2x, dedup per bulan Masehi yang dilewati rentang bulan Hijriyah). |
-| `viewmodel/waktusholat/PrayerTimesViewModel.kt` | Reuse `PrayerKind` enum (urutan kolom) — tidak diubah. |
+| `repo/PrayerRepository.kt` | Tidak berubah — reuse `getIslamicHolidays(lat, lng, month, year)` yang sudah ada. |
+| `viewmodel/waktusholat/PrayerKind` (di `PrayerTimesViewModel.kt`) | Reuse enum urutan kolom — tidak diubah. |
 
 Alur data: `JadwalImsakiyahActivity` resolve lokasi -> `viewModel.loadMonth(lat,
 lng, 0)` -> `HijriCalendarEngine.monthRangeForOffset()` (dapat tanggal 1 +
@@ -107,11 +138,21 @@ JVM, lihat `docs/features/bulan-hijriyah.md` §7).
 debug, home -> tombol "Jadwal Imsakiyah" (setelah "Hisab Nasional", slot
 "Doa & Dzikir" sudah tidak ada) -> tabel tampil (header "Tgl" + 8 kolom
 waktu, tint amber), scroll vertical (30 baris) & horizontal (kolom) jalan
-lancar tanpa lag. Tombol ▶ ganti bulan dari "Rabiul Akhir 1448 H" ke
-"Jumadil Awal 1448 H", data reload benar (nilai waktu turun konsisten
-hari-ke-hari, wajar secara musim). "Semua Menu" dicek juga: "Jadwal
-Imsakiyah" muncul tepat setelah "Hisab Awal Bulan Nasional", "Doa & Dzikir"
-masih ada & masih bisa dibuka.
+lancar tanpa lag. "Semua Menu" dicek juga: "Jadwal Imsakiyah" muncul tepat
+setelah "Hisab Awal Bulan Nasional", "Doa & Dzikir" masih ada & masih bisa
+dibuka.
+
+**Verifikasi manual revisi Ramadhan-only + kota + PDF (emulator Pixel6_API34,
+2026-09-28)**, via `uiautomator dump` (bukan screenshot, lihat `CLAUDE.md`):
+tabel selalu "Ramadhan 1448 H" tanpa tombol ◀/▶; `tvLocationInfo` tampil
+("Lokasi Manual (Lat -6.2088, Lng 106.8456)" default); ikon ⚙️ -> pilih
+"Padang" -> kembali otomatis (`onResume()`), `tvLocationInfo` update jadi
+"Markaz: Padang, Sumatera Barat (Lat -0.9471, Lng 100.4172)" dan tabel
+reload dengan waktu sesuai lokasi baru; tombol "CETAK PDF" ->
+`LaporanJadwalActivity` tampil tabel identik (judul "JADWAL IMSAKIYAH",
+subtitle bulan+lokasi) -> "UNDUH PDF" tersimpan ke `Download/
+Jadwal_Imsakiyah_<timestamp>.pdf` tanpa crash (dicek `adb logcat -s
+AndroidRuntime:E` bersih di tiap langkah).
 
 **Revisi setelah verifikasi visual pertama** (2026-09-16, sama hari):
 1. User minta kolom tanggal di-freeze (awalnya seluruh tabel termasuk
@@ -138,10 +179,15 @@ masih ada & masih bisa dibuka.
   itu tidak pernah diparse). Sudah diverifikasi manual di emulator hasilnya
   masuk akal (lihat section 6), tapi belum ada assertion otomatis kalau
   Aladhan suatu saat ubah shape response endpoint ini.
-- [ ] Navigasi bulan cuma prev/next 1 langkah (bukan spinner ala
-  `AwalBulanActivity`) — cukup untuk kasus pakai "cek beberapa bulan
-  berdekatan", tapi lompat jauh (mis. dari bulan sekarang ke Ramadhan tahun
-  depan) perlu tap berulang.
-- [ ] State `monthOffset`/tabel cuma di memori ViewModel, hilang kalau
-  Activity di-recreate/rotate — sama seperti `AwalBulanActivity`, dianggap
-  cukup untuk kasus pakai utamanya.
+- [ ] State tabel cuma di memori ViewModel, hilang kalau Activity
+  di-recreate/rotate — sama seperti `AwalBulanActivity`, dianggap cukup
+  untuk kasus pakai utamanya.
+- [ ] Markaz kota (`HisabNasionalCalculator.allMarkaz`) belum punya field
+  timezone/elevasi (batasan yang sama sudah dicatat di
+  `docs/features/hisab-nasional.md` §7) — jam tetap dihitung dari data
+  Aladhan API per lat/lng, jadi tidak terlalu terdampak, tapi perlu diingat
+  kalau nanti ada fitur lain yang butuh timezone eksplisit per markaz.
+- [ ] PDF cetak masih "capture View jadi 1 halaman panjang"
+  (`HilalPdfService`), bukan pagination A4 sungguhan — untuk 30 baris hasil
+  jadi 1 halaman PDF yang sangat tinggi. Cukup untuk kebutuhan cetak saat
+  ini (lihat juga `docs/features/waktu-sholat.md` §7).

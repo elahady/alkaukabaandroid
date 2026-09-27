@@ -9,6 +9,11 @@ Konfigurasi, alih-alih dikunci ke satu metode hardcode seperti sebelumnya.
 Ini menyelesaikan kebutuhan bahwa metode hisab waktu sholat itu banyak
 macamnya (Kemenag RI, MWL, ISNA, dll) dan preferensinya beda-beda per user.
 
+Per 2026-09-28, layar ini juga dapat **pilihan kota** (daftar sama dengan
+Hisab Nasional) dan **cetak PDF jadwal bulanan** (bulan Masehi bebas
+dipilih) — lihat subsection "Pilihan kota + cetak PDF jadwal bulanan" di
+bawah untuk detailnya.
+
 ## 2. Entry point & prasyarat
 
 - Dari `MainActivity`: tap ikon gear (kanan atas) → langsung membuka
@@ -67,6 +72,10 @@ File yang terlibat:
 | `utils/prayerbreakdown/EphemerisPrayerCalculator.kt` | Implementasi breakdown untuk Ephemeris — deklinasi matahari & Equation of Time diturunkan dari posisi matahari riil (Astronomy Engine), rumus gabungan per waktu sholat (Kwd, h°, t, ikhtiyat) mengikuti prosedur hisab klasik, lihat `docs/features/rumus-hisab-ephemeris.md` |
 | `res/layout/item_prayer_breakdown.xml` | Card accordion per waktu sholat (header klik untuk expand/collapse + body berisi baris rumus) |
 | `res/layout/item_breakdown_row.xml` | Satu baris rumus di dalam card (`tvRowLabel`/`tvRowValue`) |
+| `ui/pilihkota/PilihKotaActivity.kt` + `adapter/MarkazRadioAdapter.kt` | Picker kota single-select (baru, dipakai bareng Jadwal Imsakiyah) — lihat subsection "Pilihan kota + cetak PDF jadwal bulanan" |
+| `viewmodel/waktusholat/PrayerMonthlyScheduleViewModel.kt` + Factory | Jadwal 1 bulan Masehi bebas pilihan, untuk cetak PDF (baru) |
+| `utils/PrayerScheduleFormatter.kt` | Format waktu per-hari (8 kolom), dipakai bareng Jadwal Imsakiyah (baru, dipindah dari `JadwalImsakiyahViewModel`) |
+| `ui/laporanjadwal/LaporanJadwalActivity.kt` | Render laporan + unduh PDF, dipakai bareng Jadwal Imsakiyah (baru) |
 
 Alur data (pilih metode): `KonfigurasiActivity` (radio pilih preset) →
 `SessionManager` (simpan id) → `PrayerRepository` (baca id saat request
@@ -143,6 +152,50 @@ dan `activity_waktu_sholat.xml`, tanpa mengubah logika `PrayerTimesViewModel`:
   putih (lebih terang dari teks Masehi yang tetap `waktu_sholat_date_muted`),
   dipisah bullet `"  •  "` (sebelumnya `" | "` polos, sama-sama abu tanpa
   penekanan).
+
+### Pilihan kota + cetak PDF jadwal bulanan (2026-09-28)
+
+Dua kemampuan baru, di luar konfigurasi metode yang jadi topik utama file
+ini, ditambahkan supaya `WaktuSholatActivity` sejajar dengan Jadwal
+Imsakiyah (lihat `docs/features/jadwal-imsakiyah.md`) dan Hisab Nasional:
+
+- **Menu pilih kota** (ikon ⚙️ toolbar, `btnToolbarAction`) → buka
+  `PilihKotaActivity` (`ui/pilihkota/`, single-select) dengan
+  `EXTRA_TARGET = TARGET_WAKTU_SHOLAT`. Daftar kota persis
+  `HisabNasionalCalculator.allMarkaz` (38 ibu kota provinsi, sama dengan
+  Hisab Nasional/Jadwal Imsakiyah), pilihan tersimpan terpisah
+  (`SessionManager.getSelectedMarkazWaktuSholatId()` — key sendiri, TIDAK
+  dibagi dengan pilihan kota Imsakiyah, sesuai keputusan produk saat
+  fitur ini diminta). `checkLocationPermission()` cek markaz tersimpan ini
+  duluan, sebelum cabang manual-global/GPS/fallback yang sudah ada —
+  kalau ada, `useMarkazLocation()` langsung pakai lat/lng markaz tanpa GPS.
+  Trigger pengecekan lokasi dipindah dari `onCreate()` ke `onResume()`
+  supaya balik dari `PilihKotaActivity` langsung reload otomatis (pola
+  sama `HisabNasionalActivity`).
+- **Cetak jadwal sholat bulanan (PDF)** — tombol baru
+  `btnCetakJadwalBulanan` di bawah tab, buka dialog (`dialog_pilih_bulan.xml`,
+  2 `Spinner` bulan Masehi + tahun, reuse `HijriDateUtil.gregorianMonthNames`
+  dan layout spinner yang sama dipakai `AwalBulanActivity`). Submit dialog
+  → `PrayerMonthlyScheduleViewModel.loadMonth(lat, lng, month, year)` (file
+  baru, terpisah dari `PrayerTimesViewModel` yang cuma hari ini) memanggil
+  `PrayerRepository.getIslamicHolidays()` (endpoint yang sama dipakai Jadwal
+  Imsakiyah — 1 panggilan API sudah dapat 1 bulan Masehi penuh) → hasil
+  dirender via `LaporanJadwalActivity` (`ui/laporanjadwal/`, dipakai bareng
+  Jadwal Imsakiyah, lihat dokumen itu) → tombol "Unduh PDF" di sana pakai
+  `HilalPdfService` yang sama dengan fitur Awal Bulan Hijriyah.
+  Bulan **bebas dipilih** (tidak dikunci ke Ramadhan seperti Imsakiyah) —
+  itu keputusan produk eksplisit: Imsakiyah cuma perlu Ramadhan, Waktu
+  Sholat perlu semua bulan.
+- Format waktu per-hari (kolom Sepertiga Malam/Imsak/Subuh/Dhuha/Dzuhur/
+  Ashar/Maghrib/Isya, termasuk Dhuha = Sunrise+15 menit) di-share lewat
+  `utils/PrayerScheduleFormatter.kt` (dipindah dari `JadwalImsakiyahViewModel`
+  supaya tidak duplikat) — perubahan pada file itu otomatis memengaruhi
+  kedua fitur.
+
+Diverifikasi manual di emulator: pilih kota "Jambi" di Waktu Sholat sambil
+Jadwal Imsakiyah tetap di kota "Padang" (independen, tidak saling
+menimpa); dialog bulan default ke bulan berjalan; cetak PDF bulan September
+2026 tersimpan ke folder Download tanpa crash.
 
 ### Rumus hisab Ephemeris jadi presisi & sesuai prosedur klasik (2026-08-30)
 
@@ -315,3 +368,14 @@ sekali). Verifikasi saat ini manual:
       gaya underline (`bg_tab_underline_active.xml`/`bg_tab_underline_inactive.xml`,
       lihat "Polish UI hero card, tab, & lokasi" di atas). Belum dihapus —
       cek dulu tidak dipakai layar lain sebelum dibuang.
+- [ ] Markaz kota (`HisabNasionalCalculator.allMarkaz`, dipakai picker kota
+      baru) belum punya field timezone/elevasi — jam yang ditampilkan
+      mengikuti timezone perangkat, bukan WIB/WITA/WIT per kota (batasan
+      yang sama sudah dicatat di `docs/features/hisab-nasional.md` §7).
+- [ ] PDF cetak (Jadwal Imsakiyah maupun jadwal bulanan Waktu Sholat) masih
+      "capture View jadi 1 halaman panjang" (`HilalPdfService`), bukan
+      pagination A4 sungguhan — untuk tabel 28-31 baris hasilnya jadi satu
+      halaman PDF yang sangat tinggi, bukan beberapa halaman A4 standar.
+      Cukup untuk kebutuhan cetak saat ini, tapi kalau nanti perlu print
+      fisik multi-halaman rapi, perlu ditulis ulang pakai `Canvas`/`drawText`
+      manual per halaman.
