@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="560dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:background="@drawable/bg_card_up_rounded">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Pengingat Pra-Adzan"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"/>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchPreAdzanReminder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kirim notifikasi (getar, tanpa suara adzan) beberapa menit sebelum waktu sholat tiba, untuk semua waktu sholat wajib."
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="16dp"/>
+
+        <LinearLayout
+            android:id="@+id/layoutPreAdzanReminderMinutes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Ingatkan berapa menit sebelumnya?"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioGroup
+                android:id="@+id/radioGroupPreAdzanReminderMinutes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/radioReminder5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="5 menit"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/radioReminder10"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="10 menit"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/radioReminder15"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="15 menit"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/radioReminder30"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="30 menit"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+            </RadioGroup>
+        </LinearLayout>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnSavePreAdzanReminder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Simpan"
+            android:background="@drawable/bg_btn_main_dark"
+            android:textColor="@android:color/white"/>
+
+    </LinearLayout>
+</ScrollView>

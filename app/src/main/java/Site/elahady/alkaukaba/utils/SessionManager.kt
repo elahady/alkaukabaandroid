@@ -24,6 +24,11 @@ class SessionManager(context: Context) {
         const val QIBLA_SOURCE_ALADHAN = "ALADHAN"
         const val QIBLA_SOURCE_MANUAL = "MANUAL_FORMULA"
 
+        private const val KEY_ADZAN_SOUND_MODE = "ADZAN_SOUND_MODE"
+        const val ADZAN_SOUND_MODE_ADZAN = "ADZAN"
+        const val ADZAN_SOUND_MODE_BEEP = "BEEP"
+        const val ADZAN_SOUND_MODE_SILENT = "SILENT"
+
         private const val KEY_HISAB_AWAL_BULAN_METHOD = "HISAB_AWAL_BULAN_METHOD"
         const val HISAB_AWAL_BULAN_ASTRONOMY_ENGINE = "ASTRONOMY_ENGINE"
         const val HISAB_AWAL_BULAN_DURRUL_ANIQ = "DURRUL_ANIQ"
@@ -32,6 +37,13 @@ class SessionManager(context: Context) {
 
         private const val KEY_SELECTED_MARKAZ_IMSAKIYAH = "SELECTED_MARKAZ_IMSAKIYAH"
         private const val KEY_SELECTED_MARKAZ_WAKTU_SHOLAT = "SELECTED_MARKAZ_WAKTU_SHOLAT"
+
+        private const val KEY_LAST_HOME_LAT = "LAST_HOME_LAT"
+        private const val KEY_LAST_HOME_LNG = "LAST_HOME_LNG"
+
+        private const val KEY_PRE_ADZAN_REMINDER_ENABLED = "PRE_ADZAN_REMINDER_ENABLED"
+        private const val KEY_PRE_ADZAN_REMINDER_MINUTES = "PRE_ADZAN_REMINDER_MINUTES"
+        const val DEFAULT_PRE_ADZAN_REMINDER_MINUTES = 10
     }
 
     /**
@@ -89,6 +101,13 @@ class SessionManager(context: Context) {
         return "${getCustomFajrAngle()},0,${getCustomIshaAngle()}"
     }
 
+    fun setAdzanSoundMode(mode: String) {
+        prefs.edit().putString(KEY_ADZAN_SOUND_MODE, mode).apply()
+    }
+
+    fun getAdzanSoundMode(): String =
+        prefs.getString(KEY_ADZAN_SOUND_MODE, ADZAN_SOUND_MODE_ADZAN) ?: ADZAN_SOUND_MODE_ADZAN
+
     /** Metode hisab awal bulan Hijriyah (fitur "Bulan Hijriyah") — Astronomy Engine (default) atau Ad-Durrul Aniq. */
     fun setHisabAwalBulanMethod(method: String) {
         prefs.edit().putString(KEY_HISAB_AWAL_BULAN_METHOD, method).apply()
@@ -124,6 +143,39 @@ class SessionManager(context: Context) {
     }
 
     fun getSelectedMarkazWaktuSholatId(): String? = prefs.getString(KEY_SELECTED_MARKAZ_WAKTU_SHOLAT, null)
+
+    /**
+     * Koordinat terakhir yang dipakai Beranda (MainActivity) untuk jadwal sholat — dari GPS
+     * maupun lokasi manual. Dipakai `AdzanRefreshWorker` sebagai cadangan kalau GPS tidak
+     * bisa dibaca di background, supaya alarm adzan tetap mengacu ke lokasi yang tampil di
+     * Beranda (bukan langsung jatuh ke Jakarta). `null` = Beranda belum pernah dapat lokasi.
+     */
+    fun setLastHomeLocation(lat: Double, lng: Double) {
+        prefs.edit()
+            .putFloat(KEY_LAST_HOME_LAT, lat.toFloat())
+            .putFloat(KEY_LAST_HOME_LNG, lng.toFloat())
+            .apply()
+    }
+
+    fun getLastHomeLocation(): Pair<Double, Double>? {
+        if (!prefs.contains(KEY_LAST_HOME_LAT) || !prefs.contains(KEY_LAST_HOME_LNG)) return null
+        return prefs.getFloat(KEY_LAST_HOME_LAT, 0f).toDouble() to prefs.getFloat(KEY_LAST_HOME_LNG, 0f).toDouble()
+    }
+
+    /** Pengingat pra-adzan (mis. "10 menit lagi Dzuhur") — nonaktif by default (opt-in),
+     *  berlaku untuk semua 5 waktu sholat wajib sekaligus (bukan per-waktu). */
+    fun setPreAdzanReminderEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_PRE_ADZAN_REMINDER_ENABLED, enabled).apply()
+    }
+
+    fun isPreAdzanReminderEnabled(): Boolean = prefs.getBoolean(KEY_PRE_ADZAN_REMINDER_ENABLED, false)
+
+    fun setPreAdzanReminderMinutes(minutes: Int) {
+        prefs.edit().putInt(KEY_PRE_ADZAN_REMINDER_MINUTES, minutes).apply()
+    }
+
+    fun getPreAdzanReminderMinutes(): Int =
+        prefs.getInt(KEY_PRE_ADZAN_REMINDER_MINUTES, DEFAULT_PRE_ADZAN_REMINDER_MINUTES)
 
     fun setLogin(isLoggedIn: Boolean) {
         val editor = prefs.edit()

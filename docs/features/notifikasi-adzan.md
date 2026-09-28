@@ -1,46 +1,32 @@
 # Notifikasi Adzan
 
-> **STATUS: DIHAPUS dari kode pada 2026-09-26 — masuk backlog, akan dilanjutkan
-> nanti.** Keputusan pemilik project: seluruh fitur adzan (notifikasi + suara,
-> pengingat pra-adzan, dan menu "Putar Suara Adzan") dilepas dulu dari app.
-> Dokumen ini **dipertahankan sebagai spesifikasi terakhir sebelum dihapus** —
-> semua path/kelas yang disebut di bawah **sudah tidak ada** di working tree,
-> tapi utuh di history git sampai commit `b609ae0`.
+> **Riwayat**: fitur ini sempat dihapus dari kode pada 2026-09-26 (commit
+> `86c2623`, masuk backlog) lalu **dihidupkan kembali pada 2026-09-28** dengan
+> me-revert commit tersebut, plus tiga perubahan (lihat "Perubahan 2026-09-28"
+> di bawah). Isi dokumen ini sudah mengikuti kondisi kode terbaru.
 >
-> **Yang ikut dihapus**: package `notifikasi/` (8 file: `AdzanScheduler`,
-> `AdzanAlarmReceiver`, `AdzanPlaybackService`, `AdzanRefreshWorker`,
-> `AdzanSound`, `NotificationHelper`, `PreAdzanReminderReceiver`,
-> `BootReceiver`); 3 file audio `res/raw` (`adzan_mekkah.mp3`,
-> `adzan_mekkah_subuh.mp3` = rekaman pribadi pemilik project di Masjidil Haram,
-> `adzan_marrakesh.mp3` = sudah tidak terpakai); 3 layout dialog
-> (`dialog_notifikasi_adzan`, `dialog_pengingat_pra_adzan`,
-> `dialog_putar_adzan`); 3 row + 1 launcher izin + logika pratinjau di
-> `KonfigurasiActivity`; getter/setter adzan & pra-adzan di `SessionManager`;
-> WorkManager di `AlKaukabaApplication`; dependency
-> `androidx.work:work-runtime-ktx:2.8.1`; 2 receiver + 1 service + 6 izin
-> (`POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `WAKE_LOCK`,
-> `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`,
-> `RECEIVE_BOOT_COMPLETED`) di `AndroidManifest.xml`. `VIBRATE` **tetap ada**
-> karena dipakai Tasbih Digital.
->
-> **Yang sengaja tidak disentuh**: fitur Waktu Sholat (jadwal tampil, Aladhan
-> API, `PrayerRepository`) — itu sumber data yang nanti dipakai lagi kalau
-> adzan dihidupkan kembali.
->
-> **Cara memulihkan**: `git checkout b609ae0 -- app/src/main/java/Site/elahady/alkaukaba/notifikasi app/src/main/res/raw app/src/main/res/layout/dialog_notifikasi_adzan.xml app/src/main/res/layout/dialog_pengingat_pra_adzan.xml app/src/main/res/layout/dialog_putar_adzan.xml`,
-> lalu kembalikan sisa perubahan di `KonfigurasiActivity`,
-> `activity_konfigurasi.xml`, `SessionManager`, `AlKaukabaApplication`,
-> `AndroidManifest.xml`, dan `app/build.gradle` dari diff commit penghapusan
-> (`git log --oneline -- docs/features/notifikasi-adzan.md`). Sebelum
-> menghidupkan lagi, baca section 7 (Known issues) — terutama fallback jadwal
-> offline dan battery optimization OEM, karena itu titik lemah desain lama.
->
-> **Sisa yang tidak bisa dibersihkan dari sisi kode**: `SharedPreferences
-> "AppSession"` di device yang pernah memakai fitur ini masih menyimpan key
-> `ADZAN_SOUND_MODE`, `PRE_ADZAN_REMINDER_ENABLED`, `PRE_ADZAN_REMINDER_MINUTES`
-> (yatim, tidak terbaca siapa pun, tidak berbahaya). Alarm yang sudah terjadwal
-> di `AlarmManager` sebelum update juga bisa tetap ada sampai waktunya tiba,
-> tapi komponen penerimanya sudah tidak ada sehingga broadcast-nya diabaikan.
+> **Perubahan 2026-09-28**
+> - **Audio diganti** dengan 2 rekaman yang diberikan pemilik project:
+>   `res/raw/adzan_standar.mp3` (Dzuhur/Ashar/Maghrib/Isya) dan
+>   `res/raw/adzan_subuh.mp3` (Subuh). File Marrakesh & rekaman Mekkah lama
+>   dibuang dari repo. Pemetaan ada di `AdzanSound` (satu-satunya tempat).
+> - **Acuan wilayah = lokasi yang tampil di Beranda** (`MainActivity`):
+>   `AdzanRefreshWorker.resolveLocation()` memakai urutan lokasi manual
+>   (Konfigurasi) → GPS `lastLocation` → koordinat terakhir yang dipakai
+>   Beranda (`SessionManager.get/setLastHomeLocation`) → Jakarta. Beranda
+>   memanggil `AdzanRefreshWorker.onHomeLocationResolved()` tiap lokasi
+>   ketemu; kalau lokasinya bergeser >0,05° (~5 km) atau baru pertama, alarm
+>   langsung dijadwalkan ulang. Cadangan dari Beranda diperlukan karena
+>   Android biasanya tidak memberi `lastLocation` ke worker di background
+>   (tanpa izin lokasi latar belakang). Pilihan kota per-fitur di Waktu
+>   Sholat/Imsakiyah **tidak** dipakai adzan.
+> - **Penjadwalan kemunculan berikutnya**: `AdzanScheduler.scheduleFromTimings()`
+>   menerima jadwal besok (`tomorrowTimings`, diambil worker) dan memasang tiap
+>   waktu sholat pada kemunculan berikutnya — hari ini kalau belum lewat, besok
+>   kalau sudah. `AdzanAlarmReceiver` juga men-enqueue refresh tiap kali adzan
+>   berbunyi, jadi Subuh besok terpasang begitu Isya selesai tanpa menunggu job
+>   00:05 (yang bisa tertunda Doze). Versi lama hanya memasang sisa waktu hari
+>   ini.
 
 ### 1. Ringkasan (Overview)
 - **Nama fitur**: Notifikasi Adzan + Personalisasi Suara + Pengingat Pra-Adzan
@@ -121,10 +107,10 @@ kecuali `AlKaukabaApplication.kt` (root package):
 | File | Peran |
 |---|---|
 | `AlKaukabaApplication.kt` | Application class custom — init channel + jadwalkan WorkManager (immediate + periodic 00:05) |
-| `AdzanRefreshWorker.kt` | `CoroutineWorker` — fetch jadwal hari ini via `PrayerRepository`, resolve lokasi (manual/GPS/fallback Jakarta), lalu panggil `AdzanScheduler` |
+| `AdzanRefreshWorker.kt` | `CoroutineWorker` — fetch jadwal hari ini via `PrayerRepository`, resolve lokasi (manual → GPS → koordinat terakhir Beranda → Jakarta), ambil jadwal hari ini + besok, lalu panggil `AdzanScheduler` |
 | `AdzanScheduler.kt` | Pasang `AlarmManager.setExactAndAllowWhileIdle` per waktu sholat, `PendingIntent` ke `AdzanAlarmReceiver` |
 | `AdzanAlarmReceiver.kt` | Diterima tepat saat alarm bunyi — baca `SessionManager.getAdzanSoundMode()` lalu branch ke Service/NotificationHelper |
-| `AdzanPlaybackService.kt` | Foreground service (`mediaPlayback`) — `MediaPlayer` play `res/raw/adzan_mekkah_subuh.mp3` untuk Subuh, `res/raw/adzan_mekkah.mp3` untuk 4 waktu lain (dipilih dari `prayerName == AdzanScheduler.PRAYER_SUBUH`) di mode Adzan Penuh, ada tombol Stop di notifikasi |
+| `AdzanPlaybackService.kt` | Foreground service (`mediaPlayback`) — `MediaPlayer` play `res/raw/adzan_subuh.mp3` untuk Subuh, `res/raw/adzan_standar.mp3` untuk 4 waktu lain (dipilih dari `prayerName == AdzanScheduler.PRAYER_SUBUH`) di mode Adzan Penuh, ada tombol Stop di notifikasi |
 | `AdzanSound.kt` | Satu-satunya tempat yang memetakan waktu sholat → file `res/raw` (Subuh vs lainnya), dipakai `AdzanPlaybackService` dan pratinjau di Konfigurasi |
 | `NotificationHelper.kt` | Definisi `NotificationChannel` + post notifikasi untuk mode Beep/Senyap/Pengingat Pra-Adzan |
 | `PreAdzanReminderReceiver.kt` | Diterima `reminderMinutes` sebelum waktu sholat — cek `SessionManager.isPreAdzanReminderEnabled()` lalu post notifikasi via `NotificationHelper.postPreAdzanReminderNotification()` |
@@ -165,16 +151,31 @@ di kelas itu, SharedPreferences biasa, bukan DataStore).
 - **Belum ada test otomatis** untuk fitur ini (gap, bukan sengaja dilewati).
 - Verifikasi manual yang sudah dilakukan: `gradlew compileDebugKotlin` dan
   `gradlew assembleDebug` — BUILD SUCCESSFUL, APK debug ~13MB.
-- **Belum dilakukan** (perlu sebelum rilis): test di device fisik dengan waktu
-  sholat sungguhan atau lewat broadcast manual:
+- **Diverifikasi 2026-09-28 di emulator Pixel6_API34** (Android 14, lokasi manual
+  Jakarta): worker jalan, 5 alarm adzan (+5 pra-adzan) terpasang ke Subuh 04:22,
+  Dzuhur 11:43, Ashar 14:51, Maghrib 17:48, Isya 18:57 WIB besok (karena
+  sekarang sudah lewat Isya — cek `adb shell dumpsys alarm | grep -B1
+  AdzanAlarmReceiver`, kolom `origWhen` adalah epoch UTC). Simulasi alarm:
+  service foreground aktif dan `MediaPlayer` `started` (`dumpsys audio`) dengan
+  sample rate 44100 Hz untuk Subuh (= `adzan_subuh.mp3`) dan 22050 Hz untuk
+  Dzuhur (= `adzan_standar.mp3`); tombol Stop menghentikan pemutaran.
+  **Belum diverifikasi**: bunyi sungguhan lewat alarm asli di device fisik,
+  layar Konfigurasi (row/bottom sheet adzan) secara visual, dan perilaku di
+  Android 14+ saat izin "Alarm & pengingat" belum diberikan (lihat section 7).
+- **Cara memicu alarm secara manual** (resep lama di dokumen ini keliru untuk
+  device non-root): receiver `exported=false`, jadi `adb shell am broadcast` dari
+  shell biasa ditolak sistem *diam-diam* ("skipped by policy… not exported" hanya
+  muncul di `dumpsys activity broadcasts`). Pakai emulator (Google APIs) dengan
+  `adb root` dulu:
   ```
-  adb shell am broadcast \
-    --es prayer_name "Subuh" \
+  adb root
+  adb shell am broadcast --es prayer_name "Subuh" \
     -n site.elahady.alkaukaba/.notifikasi.AdzanAlarmReceiver
   ```
-  (catatan: intent yang dikirim `AdzanScheduler` tidak diberi `action` — hanya
-  ditarget lewat component name + extra `prayer_name`, jadi broadcast manual di
-  atas tidak perlu `-a`)
+  (intent yang dikirim `AdzanScheduler` tidak diberi `action`, jadi tidak perlu
+  `-a`; hentikan suara dengan `adb shell am startservice -a
+  site.elahady.alkaukaba.ACTION_STOP_ADZAN -n
+  site.elahady.alkaukaba/.notifikasi.AdzanPlaybackService`)
   — ganti pilihan suara di Konfigurasi lalu ulangi, pastikan mode yang aktif
   yang kepakai (bukan yang di-cache saat scheduling). Test juga reboot
   (`adb shell am broadcast -a android.intent.action.BOOT_COMPLETED -n
@@ -208,25 +209,30 @@ di kelas itu, SharedPreferences biasa, bukan DataStore).
 
 ### 7. Known issues & TODOs
 - Hanya **1 pilihan "Adzan Penuh"**, bukan multi-muadzin seperti rencana awal di
-  Notion. Sejak 2026-09-19 sumbernya adalah **rekaman pribadi pemilik project di
-  Masjidil Haram, Mekkah** (bukan lagi Marrakesh): `adzan_mekkah_subuh.mp3` (192
-  kbps, 44,1 kHz, ~3:25) untuk Subuh karena memuat "as-shalatu khairun
-  minan-naum", dan `adzan_mekkah.mp3` (192 kbps, 44,1 kHz, ~3:02) untuk
-  Dzuhur/Ashar/Maghrib/Isya. Lisensi bukan masalah karena rekaman sendiri —
-  tapi jangan menyebut nama muadzin di app kalau tidak yakin siapa orangnya.
-  Alasan ganti: rekaman Marrakesh (CC0, "EveningCallToPrayer Marrakesh 5.1"
-  oleh blaukreuz, freesound.org/people/blaukreuz/sounds/520233) terdengar
-  kurang jelas (rekaman lapangan, jauh & bergema). `adzan_marrakesh.mp3`
-  **masih ada di `res/raw` tapi tidak dirujuk kode lagi** (`shrinkResources`
-  membuangnya dari APK release).
-  Nama qari terkenal (Mishary Alafasy dll.) yang beredar di GitHub/YouTube tidak
-  punya lisensi jelas, jadi sengaja tidak dipakai. Kalau mau tambah pilihan lain,
-  cari rekaman CC0 terverifikasi (cek langsung halaman lisensinya, jangan
-  percaya hasil pencarian saja) atau rekaman sendiri sebelum dibundel ke `res/raw`.
-- **Kejelasan suara rekaman Mekkah belum diukur** — belum diproses (denoise/EQ/
-  normalisasi) dan belum didengar di speaker HP. Kedua file ~9 MB total di APK;
-  bisa dikecilkan dengan re-encode bitrate lebih rendah kalau ukuran APK jadi
-  masalah.
+  Notion. Sejak 2026-09-28 sumbernya adalah **2 rekaman yang diberikan pemilik
+  project** (file WhatsApp `AUD-20260928-WA0112` → `adzan_standar.mp3`, mp3
+  22,05 kHz stereo 40 kbps ~3:20, untuk Dzuhur/Ashar/Maghrib/Isya; dan
+  `AUD-20260928-WA0111` → `adzan_subuh.mp3`, mp3 44,1 kHz stereo 128 kbps
+  ~3:07, untuk Subuh karena memuat "as-shalatu khairun minan-naum"). Total ~4 MB
+  di APK. Asal-usul/lisensi rekaman & identitas muadzin **belum tercatat** —
+  konfirmasi ke pemilik project sebelum dirilis publik, dan jangan menyebut nama
+  muadzin di app kalau tidak yakin. Nama qari terkenal (Mishary Alafasy dll.)
+  yang beredar di GitHub/YouTube tidak punya lisensi jelas. (Rekaman Mekkah &
+  Marrakesh yang dipakai sebelumnya sudah dihapus dari `res/raw`; ada di
+  history git sebelum 2026-09-28.)
+- **Kejelasan suara belum diukur** — `adzan_standar.mp3` berbitrate rendah (40
+  kbps, 22 kHz), mungkin terdengar kurang jernih di speaker HP; belum diproses
+  (denoise/EQ/normalisasi) dan belum didengar di device.
+- **Waktu sholat = jam lokal koordinat, bukan jam device**: Aladhan mengembalikan
+  "HH:mm" di zona waktu lokasi, sedangkan `AdzanScheduler` menafsirkannya di zona
+  waktu device. Tidak masalah selama lokasi & device di zona yang sama (kasus
+  normal di Indonesia), tapi kalau user memilih lokasi manual di zona lain
+  (mis. Mekkah) alarm akan salah jam. Belum ditangani (Beranda pun menampilkan
+  jam mentah yang sama).
+- **Android 14+ menolak `SCHEDULE_EXACT_ALARM` secara default** untuk install
+  baru; tanpa izin itu alarm jatuh ke `setAndAllowWhileIdle` (tidak exact) dan
+  belum diuji apakah `startForegroundService` dari receiver alarm tersebut selalu
+  diizinkan. Kalau adzan tidak bunyi di device tertentu, cek ini dulu.
 - **Battery optimization OEM** (Xiaomi/Oppo/Vivo dkk.) belum ditangani — alarm
   exact bisa saja tetap di-kill di background pada device tertentu meski app
   sudah pakai `setExactAndAllowWhileIdle`. Perlu diarahkan ke pengaturan
@@ -235,14 +241,13 @@ di kelas itu, SharedPreferences biasa, bukan DataStore).
 - **Tidak ada fallback jadwal offline** — kalau `AdzanRefreshWorker` gagal fetch
   (tidak ada internet saat itu), `Result.retry()` dipanggil tapi tidak ada
   jadwal cadangan dari hari sebelumnya. WorkManager akan retry dengan backoff
-  default, tapi kalau tetap gagal sampai lewat tengah malam, hari itu tidak
-  ada alarm sama sekali.
+  default, tapi kalau tetap gagal sampai alarm terakhir yang terpasang lewat,
+  tidak ada alarm sama sekali sampai fetch berhasil. (Sejak 2026-09-28 jadwal
+  besok ikut dipasang begitu tersedia, jadi jendela risikonya lebih sempit.)
 - Belum ada UI untuk menonaktifkan notifikasi per-waktu-sholat (mis. matikan
   cuma untuk Dzuhur) — saat ini semua-atau-tidak-sama-sekali per mode suara.
   Pengingat pra-adzan (di bawah) punya keterbatasan yang sama secara sengaja
   (lihat keputusan desain di Notion, task selesai 2026-09-15).
-- Belum di-commit ke git per 2026-09-05 (lihat status di Notion "🚀
-  Pengembangan Al-Kaukaba" → entry "Personalisasi Notifikasi Adzan").
 - **Pengingat pra-adzan tidak punya toggle per-waktu-sholat** — satu switch
   on/off berlaku untuk semua 5 waktu sekaligus (keputusan desain sadar, sesuai
   diskusi task Notion "Pengingat Pra-Waktu Sholat", bukan keterbatasan teknis

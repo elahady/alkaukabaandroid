@@ -408,6 +408,18 @@ Catatan lain dari sesi run-di-emulator ini:
 
 ## 9. Persiapan rilis versionCode 9 / "1.8" (2026-09-26)
 
+> **Update 2026-09-28 — fitur adzan dihidupkan lagi di kode** (lihat
+> `docs/features/notifikasi-adzan.md`), jadi paragraf di bawah yang bilang
+> "adzan dihapus total / izin tidak ada lagi di manifest" **tidak berlaku lagi
+> untuk build berikutnya**. AAB versionCode 9 yang sudah dibuild 2026-09-26
+> tanpa adzan tidak memuat fitur ini — kalau adzan mau ikut rilis 1.8, AAB
+> harus **dibuild ulang** (dan cek keystore/SHA1 lagi). Izin
+> `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `WAKE_LOCK`,
+> `FOREGROUND_SERVICE(_MEDIA_PLAYBACK)`, `RECEIVE_BOOT_COMPLETED` kembali ada,
+> jadi pengguna lama akan diminta izin notifikasi, dan Play Console kemungkinan
+> minta deklarasi foreground service (media playback) serta exact alarm —
+> cek "App content" sebelum upload.
+
 Rilis pembaruan pertama setelah 1.7 (versionCode 8, live 100% sejak
 2026-09-13). Isinya 90 commit sejak 1.7 dan **fitur adzan dihapus total**
 (lihat `docs/features/notifikasi-adzan.md`), jadi izin

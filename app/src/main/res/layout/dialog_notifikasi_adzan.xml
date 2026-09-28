@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="560dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:background="@drawable/bg_card_up_rounded">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Suara Notifikasi Adzan"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="16dp"/>
+
+        <RadioGroup
+            android:id="@+id/radioGroupAdzanSound"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioAdzanFull"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Adzan Penuh"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"/>
+
+            <RadioButton
+                android:id="@+id/radioAdzanBeep"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Beep Pelan\nNada notifikasi singkat, cocok untuk situasi seperti di kantor"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"/>
+
+            <RadioButton
+                android:id="@+id/radioAdzanSilent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Senyap\nTanpa suara, hanya notifikasi visual"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"/>
+        </RadioGroup>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnSaveAdzanSound"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Simpan"
+            android:background="@drawable/bg_btn_main_dark"
+            android:textColor="@android:color/white"/>
+
+    </LinearLayout>
+</ScrollView>

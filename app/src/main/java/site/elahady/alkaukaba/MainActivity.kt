@@ -5,6 +5,7 @@ import site.elahady.alkaukaba.repo.PrayerRepository
 import site.elahady.alkaukaba.adapter.CalendarAdapter
 import site.elahady.alkaukaba.adapter.HolidayAdapter
 import site.elahady.alkaukaba.api.RetrofitClient
+import site.elahady.alkaukaba.notifikasi.AdzanRefreshWorker
 import site.elahady.alkaukaba.ui.arahkiblat.KiblatActivity
 import site.elahady.alkaukaba.ui.awalbulan.AwalBulanActivity
 import site.elahady.alkaukaba.ui.calendar.CalendarActivity
@@ -273,6 +274,8 @@ class MainActivity : AppCompatActivity() {
     private fun fetchDataByCoordinate(lat: Double, lon: Double) {
         latitude = lat
         longitude = lon
+        // Adzan mengacu ke lokasi yang sama dengan jadwal sholat di Beranda.
+        AdzanRefreshWorker.onHomeLocationResolved(this, lat, lon)
         viewModel.fetchPrayerData(lat, lon)
         viewModel.fetchUpcomingEvents(lat, lon)
         viewModel.initCalendar(lat, lon)

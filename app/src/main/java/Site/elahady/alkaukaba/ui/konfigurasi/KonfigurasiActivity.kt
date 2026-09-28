@@ -6,21 +6,36 @@ import site.elahady.alkaukaba.utils.PrayerCalculationMethods
 import site.elahady.alkaukaba.utils.SessionManager
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import site.elahady.alkaukaba.notifikasi.AdzanRefreshWorker
+import site.elahady.alkaukaba.notifikasi.AdzanSound
 import site.elahady.alkaukaba.utils.applySystemBarInsetsPadding
 import site.elahady.alkaukaba.utils.applyTopSystemBarInsetAsMargin
 import site.elahady.alkaukaba.utils.applyStatusBarIconsForTheme
@@ -34,6 +49,11 @@ class KonfigurasiActivity : AppCompatActivity() {
     // Referensi field lat/lon aktif selagi dialog_lokasi terbuka, dipakai callback GPS/permission.
     private var etManualLatRef: EditText? = null
     private var etManualLngRef: EditText? = null
+
+    // Pratinjau suara adzan (menu "Putar Suara Adzan"): satu pemutar, satu rekaman aktif sekali waktu.
+    private var previewPlayer: MediaPlayer? = null
+    private var previewingRawRes: Int? = null
+    private var adzanPreviewSheet: BottomSheetDialog? = null
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -49,6 +69,14 @@ class KonfigurasiActivity : AppCompatActivity() {
         picked?.let { (lat, lng) ->
             etManualLatRef?.setText(lat.toString())
             etManualLngRef?.setText(lng.toString())
+        }
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            Toast.makeText(this, "Izin notifikasi diperlukan supaya notifikasi adzan muncul", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -71,12 +99,17 @@ class KonfigurasiActivity : AppCompatActivity() {
         binding.rowLocation.setOnClickListener { showLocationSheet() }
         binding.rowQiblaSource.setOnClickListener { showQiblaSourceSheet() }
         binding.rowPrayerMethod.setOnClickListener { showPrayerMethodSheet() }
+        binding.rowNotifikasiAdzan.setOnClickListener { showAdzanSoundSheet() }
+        binding.rowPutarAdzan.setOnClickListener { showAdzanPreviewSheet() }
         binding.rowHisabMethod.setOnClickListener { showHisabMethodSheet() }
+        binding.rowPreAdzanReminder.setOnClickListener { showPreAdzanReminderSheet() }
 
         updateCurrentLocationLabel()
         updateCurrentQiblaSourceLabel()
         updateCurrentMethodLabel()
+        updateCurrentAdzanSoundLabel()
         updateCurrentHisabMethodLabel()
+        updateCurrentPreAdzanReminderLabel()
     }
 
     // --- Lokasi ---
@@ -320,5 +353,223 @@ class KonfigurasiActivity : AppCompatActivity() {
         }
 
         bottomSheetDialog.show()
+    }
+
+    // --- Notifikasi Adzan ---
+
+    private fun updateCurrentAdzanSoundLabel() {
+        binding.tvCurrentAdzanSound.text = when (sessionManager.getAdzanSoundMode()) {
+            SessionManager.ADZAN_SOUND_MODE_BEEP -> "Beep Pelan"
+            SessionManager.ADZAN_SOUND_MODE_SILENT -> "Senyap"
+            else -> "Adzan Penuh"
+        }
+    }
+
+    private fun showAdzanSoundSheet() {
+        ensureNotificationPrerequisites()
+
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_notifikasi_adzan, null)
+        bottomSheetDialog.setContentView(view)
+
+        val radioGroup = view.findViewById<RadioGroup>(R.id.radioGroupAdzanSound)
+        val radioFull = view.findViewById<RadioButton>(R.id.radioAdzanFull)
+        val radioBeep = view.findViewById<RadioButton>(R.id.radioAdzanBeep)
+        val radioSilent = view.findViewById<RadioButton>(R.id.radioAdzanSilent)
+        val btnSave = view.findViewById<AppCompatButton>(R.id.btnSaveAdzanSound)
+
+        when (sessionManager.getAdzanSoundMode()) {
+            SessionManager.ADZAN_SOUND_MODE_BEEP -> radioBeep.isChecked = true
+            SessionManager.ADZAN_SOUND_MODE_SILENT -> radioSilent.isChecked = true
+            else -> radioFull.isChecked = true
+        }
+
+        btnSave.setOnClickListener {
+            val mode = when (radioGroup.checkedRadioButtonId) {
+                R.id.radioAdzanBeep -> SessionManager.ADZAN_SOUND_MODE_BEEP
+                R.id.radioAdzanSilent -> SessionManager.ADZAN_SOUND_MODE_SILENT
+                else -> SessionManager.ADZAN_SOUND_MODE_ADZAN
+            }
+            sessionManager.setAdzanSoundMode(mode)
+            updateCurrentAdzanSoundLabel()
+            Toast.makeText(this, "Suara notifikasi adzan disimpan", Toast.LENGTH_SHORT).show()
+            bottomSheetDialog.dismiss()
+        }
+
+        bottomSheetDialog.show()
+    }
+
+    // --- Putar Suara Adzan (pratinjau) ---
+
+    private fun showAdzanPreviewSheet() {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_putar_adzan, null)
+        bottomSheetDialog.setContentView(view)
+        bottomSheetDialog.volumeControlStream = AudioManager.STREAM_MUSIC
+
+        val btnStandard = view.findViewById<ImageView>(R.id.btnPlayAdzanStandard)
+        val btnSubuh = view.findViewById<ImageView>(R.id.btnPlayAdzanSubuh)
+
+        fun refreshIcons() {
+            btnStandard.setImageResource(
+                if (previewingRawRes == AdzanSound.STANDARD) R.drawable.ic_pause else R.drawable.ic_play
+            )
+            btnSubuh.setImageResource(
+                if (previewingRawRes == AdzanSound.SUBUH) R.drawable.ic_pause else R.drawable.ic_play
+            )
+        }
+
+        fun toggle(rawRes: Int) {
+            if (previewingRawRes == rawRes) stopAdzanPreview() else startAdzanPreview(rawRes, ::refreshIcons)
+            refreshIcons()
+        }
+
+        btnStandard.setOnClickListener { toggle(AdzanSound.STANDARD) }
+        btnSubuh.setOnClickListener { toggle(AdzanSound.SUBUH) }
+
+        bottomSheetDialog.setOnDismissListener {
+            stopAdzanPreview()
+            adzanPreviewSheet = null
+        }
+        adzanPreviewSheet = bottomSheetDialog
+        bottomSheetDialog.show()
+    }
+
+    /** [onStopped] dipanggil saat rekaman selesai sendiri, supaya ikon di sheet kembali ke "play". */
+    private fun startAdzanPreview(rawRes: Int, onStopped: () -> Unit) {
+        stopAdzanPreview()
+        val player = MediaPlayer.create(
+            this,
+            rawRes,
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build(),
+            AudioManager.AUDIO_SESSION_ID_GENERATE
+        )
+        if (player == null) {
+            Toast.makeText(this, "Gagal memutar suara adzan", Toast.LENGTH_SHORT).show()
+            return
+        }
+        player.setOnCompletionListener {
+            stopAdzanPreview()
+            onStopped()
+        }
+        player.start()
+        previewPlayer = player
+        previewingRawRes = rawRes
+    }
+
+    private fun stopAdzanPreview() {
+        previewPlayer?.release()
+        previewPlayer = null
+        previewingRawRes = null
+    }
+
+    override fun onStop() {
+        // Tutup sheet (sekaligus hentikan suara) saat app ke background, supaya adzan tidak
+        // terus terdengar dan ikon di sheet tidak basi saat user kembali.
+        adzanPreviewSheet?.dismiss()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        stopAdzanPreview()
+        super.onDestroy()
+    }
+
+    /** Minta izin POST_NOTIFICATIONS (Android 13+) dan arahkan ke Settings kalau izin
+     *  "Alarm & pengingat" (exact alarm, Android 12+) belum diberikan - tanpa keduanya,
+     *  notifikasi adzan bisa tidak muncul atau meleset waktunya. */
+    private fun ensureNotificationPrerequisites() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(AlarmManager::class.java)
+            if (alarmManager?.canScheduleExactAlarms() == false) {
+                Toast.makeText(
+                    this,
+                    "Aktifkan izin \"Alarm & pengingat\" agar notifikasi adzan tepat waktu",
+                    Toast.LENGTH_LONG
+                ).show()
+                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:$packageName")
+                })
+            }
+        }
+    }
+
+    // --- Pengingat Pra-Adzan ---
+
+    private fun updateCurrentPreAdzanReminderLabel() {
+        binding.tvCurrentPreAdzanReminder.text = if (sessionManager.isPreAdzanReminderEnabled()) {
+            "Aktif, ${sessionManager.getPreAdzanReminderMinutes()} menit sebelum waktu sholat"
+        } else {
+            "Nonaktif"
+        }
+    }
+
+    private fun showPreAdzanReminderSheet() {
+        ensureNotificationPrerequisites()
+
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_pengingat_pra_adzan, null)
+        bottomSheetDialog.setContentView(view)
+
+        val switchEnabled = view.findViewById<SwitchCompat>(R.id.switchPreAdzanReminder)
+        val layoutMinutes = view.findViewById<View>(R.id.layoutPreAdzanReminderMinutes)
+        val radioGroup = view.findViewById<RadioGroup>(R.id.radioGroupPreAdzanReminderMinutes)
+        val btnSave = view.findViewById<AppCompatButton>(R.id.btnSavePreAdzanReminder)
+
+        val minutesToRadioId = mapOf(
+            5 to R.id.radioReminder5,
+            10 to R.id.radioReminder10,
+            15 to R.id.radioReminder15,
+            30 to R.id.radioReminder30
+        )
+
+        switchEnabled.isChecked = sessionManager.isPreAdzanReminderEnabled()
+        layoutMinutes.visibility = if (switchEnabled.isChecked) View.VISIBLE else View.GONE
+        radioGroup.check(
+            minutesToRadioId[sessionManager.getPreAdzanReminderMinutes()]
+                ?: R.id.radioReminder10
+        )
+
+        switchEnabled.setOnCheckedChangeListener { _, isChecked ->
+            layoutMinutes.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        btnSave.setOnClickListener {
+            val minutes = when (radioGroup.checkedRadioButtonId) {
+                R.id.radioReminder5 -> 5
+                R.id.radioReminder15 -> 15
+                R.id.radioReminder30 -> 30
+                else -> 10
+            }
+            sessionManager.setPreAdzanReminderEnabled(switchEnabled.isChecked)
+            sessionManager.setPreAdzanReminderMinutes(minutes)
+            updateCurrentPreAdzanReminderLabel()
+            rescheduleAdzanAlarms()
+            Toast.makeText(this, "Pengingat pra-adzan disimpan", Toast.LENGTH_SHORT).show()
+            bottomSheetDialog.dismiss()
+        }
+
+        bottomSheetDialog.show()
+    }
+
+    /** Refresh alarm segera (bukan menunggu buka-app berikutnya atau job harian jam 00:05)
+     *  supaya perubahan setting pengingat pra-adzan langsung kepakai — pola sama seperti
+     *  [site.elahady.alkaukaba.notifikasi.BootReceiver]. */
+    private fun rescheduleAdzanAlarms() {
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            AdzanRefreshWorker.UNIQUE_WORK_NAME_IMMEDIATE,
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<AdzanRefreshWorker>().build()
+        )
     }
 }
