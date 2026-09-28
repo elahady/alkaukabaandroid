@@ -65,15 +65,16 @@ Setelah mengubah kode, jangan hanya compile check — build & install APK debug 
 JAVA_HOME=... ANDROID_HOME=... ./gradlew.bat installDebug --console=plain
 ```
 
-## Commit setelah selesai edit file/fitur
+## Commit + push setelah selesai edit file/fitur
 
 Setiap kali selesai mengubah/menambah kode untuk sebuah task (fix atau
 fitur) dan perubahannya sudah diverifikasi (compile check / build install /
-verifikasi manual), langsung `git add` + `git commit` perubahan tersebut —
-jangan menumpuk beberapa task jadi satu commit besar di akhir sesi, dan
-jangan menunggu diminta eksplisit. Commit di sini artinya commit lokal;
-push ke remote tetap ikuti aturan konfirmasi biasa (jangan push tanpa
-diminta).
+verifikasi manual), langsung `git add` + `git commit` **lalu `git push`**
+perubahan tersebut ke remote — jangan menumpuk beberapa task jadi satu
+commit besar di akhir sesi, dan jangan menunggu diminta eksplisit tiap
+kali. Ini berlaku untuk push biasa ke branch yang sedang dikerjakan;
+operasi git yang destruktif/butuh override (force push, reset --hard, dsb)
+tetap wajib konfirmasi dulu seperti biasa.
 
 ## Batasi percobaan verifikasi UI via adb (jangan spam screenshot)
 
